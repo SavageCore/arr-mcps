@@ -30,6 +30,22 @@ REMOTE_HOST = "192.168.50.3"
 # Log file handle (will be set by cli.py)
 _log_file_handle = None
 
+# Provider -> opencode agent pair used for the plan and build stages.
+# 'go'      = OpenCode Go subscription (default; plan uses GLM-5.2, build uses V4 Flash)
+# 'deepseek'= DeepSeek direct API, pay-per-token (plan uses V4 Pro, build uses V4 Flash)
+PROVIDER_AGENTS = {
+    "go": {
+        "label": "opencode-go (subscription)",
+        "plan": "plan",
+        "build": "build-paid",
+    },
+    "deepseek": {
+        "label": "DeepSeek direct (pay-per-token)",
+        "plan": "plan-fb",
+        "build": "build-fb",
+    },
+}
+
 
 def set_log_file(file_path: Path):
     """Set log file for recording output."""
@@ -117,7 +133,7 @@ def scaffold_dir(service: str, repo_path: Path) -> Path:
     return mcp_dir
 
 
-def plan_and_build(service: str, repo: str, mcp_dir: Path, auto_approve: bool = False) -> bool:
+def plan_and_build(service: str, repo: str, mcp_dir: Path, auto_approve: bool = False, provider: str = "go") -> bool:
     """Run opencode plan then build stages. Returns True if build succeeds.
 
     Args:
@@ -125,9 +141,15 @@ def plan_and_build(service: str, repo: str, mcp_dir: Path, auto_approve: bool = 
         repo: GitHub repo (e.g., 'Sonarr/Sonarr')
         mcp_dir: Working directory
         auto_approve: If True, skip confirmation and proceed to build
+        provider: 'go' (opencode-go) or 'deepseek' (direct API). Selects the
+                  opencode agent pair used for plan/build.
     """
+    agents = PROVIDER_AGENTS.get(provider, PROVIDER_AGENTS["go"])
+    plan_agent = agents["plan"]
+    build_agent = agents["build"]
     console.print()
     console.print(f"[bold cyan]Step 3-4: Plan & Build ({service}-mcp)[/bold cyan]")
+    console.print(f"[dim]Provider: {agents['label']} (plan agent: {plan_agent}, build agent: {build_agent})[/dim]")
     console.print()
 
     plan_prompt = PLAN_PROMPT.format(service=service, repo=repo)
@@ -137,7 +159,7 @@ def plan_and_build(service: str, repo: str, mcp_dir: Path, auto_approve: bool = 
 
     # Run plan in foreground so user sees opencode's formatted output
     result = subprocess.run(
-        ["opencode", "run", "--dir", str(mcp_dir), "--agent", "plan",
+        ["opencode", "run", "--dir", str(mcp_dir), "--agent", plan_agent,
          "--title", f"{service}-mcp plan", plan_prompt],
         cwd=str(mcp_dir)
     )
@@ -153,7 +175,7 @@ def plan_and_build(service: str, repo: str, mcp_dir: Path, auto_approve: bool = 
         console.print()
     else:
         confirm = Confirm.ask(
-            "[bold]Plan ready above — continue to build-paid (paid run)?[/bold]",
+            f"[bold]Plan ready above — continue to {build_agent} (build run)?[/bold]",
             default=True
         )
 
@@ -163,11 +185,11 @@ def plan_and_build(service: str, repo: str, mcp_dir: Path, auto_approve: bool = 
 
         console.print()
 
-    console.print("[dim]Launching opencode build-paid agent... (output below)[/dim]")
+    console.print(f"[dim]Launching opencode {build_agent} agent... (output below)[/dim]")
     console.print()
 
     result = subprocess.run(
-        ["opencode", "run", "--dir", str(mcp_dir), "--agent", "build-paid",
+        ["opencode", "run", "--dir", str(mcp_dir), "--agent", build_agent,
          "--continue", "go"],
         cwd=str(mcp_dir)
     )

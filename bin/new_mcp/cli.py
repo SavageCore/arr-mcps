@@ -98,6 +98,10 @@ def main():
     parser.add_argument("urls", nargs="*", help="GitHub repo URLs")
     parser.add_argument("--skip-remote", action="store_true", help="Skip remote deploy")
     parser.add_argument("--auto-approve", action="store_true", help="Auto-approve plan and build")
+    parser.add_argument("--provider", choices=["go", "deepseek"], default=None,
+                        help="Provider for plan/build agents (go=opencode-go, deepseek=direct API). Skips the prompt.")
+    parser.add_argument("--url", default=None,
+                        help="Override the instance URL used for opencode registration (skips NPM resolution).")
     parser.add_argument("-v", "--version", action="store_true", help="Show version")
     parser.add_argument("-h", "--help", action="store_true", help="Show help")
     args = parser.parse_args()
@@ -109,6 +113,8 @@ def main():
         console.print("  new-mcp                                 Interactive mode")
         console.print("  new-mcp --skip-remote <url>             Skip remote deploy")
         console.print("  new-mcp --auto-approve                  Batch mode (auto-approve plans)")
+        console.print("  new-mcp --provider go|deepseek          Provider for plan/build agents (skips prompt)")
+        console.print("  new-mcp --url <instance-url>            Override registration URL (skips NPM resolution)")
         console.print("  new-mcp --version                       Show version")
         return 0
 
@@ -144,6 +150,19 @@ def main():
     console.print()
     console.print(f"[bold cyan]Processing {len(urls)} repo(s)[/bold cyan]")
     console.print()
+
+    # Provider for the opencode plan/build agents (asked once, or via --provider)
+    provider = args.provider
+    if not provider:
+        console.print("[bold]Which provider should plan/build use?[/bold]")
+        console.print("[dim]go = OpenCode Go subscription (default) · deepseek = DeepSeek direct (pay-per-token)[/dim]")
+        provider_choice = Prompt.ask(
+            "Provider",
+            choices=["opencode-go (subscription)", "DeepSeek direct (pay-per-token)"],
+            default="opencode-go (subscription)",
+        )
+        provider = "go" if provider_choice.startswith("opencode-go") else "deepseek"
+        console.print()
 
     # Collect API credentials upfront (instance URLs are auto-resolved per service)
     console.print("[bold]API Credentials[/bold]")
@@ -192,7 +211,7 @@ def main():
             console.print()
 
         # Plan & build
-        if not plan_and_build(service, repo, mcp_dir, auto_approve=auto_approve):
+        if not plan_and_build(service, repo, mcp_dir, auto_approve=auto_approve, provider=provider):
             failed.append((url, "plan/build cancelled or failed"))
             console.print()
             continue
@@ -208,9 +227,9 @@ def main():
             console.print("[yellow]WARNING: README registration had issues, but continuing...[/yellow]")
             console.print()
 
-        # Resolve instance URL if auth token provided
-        instance_url = ""
-        if auth_token:
+        # Resolve instance URL if auth token provided (or use --url override)
+        instance_url = args.url or ""
+        if not instance_url and auth_token:
             console.print()
             console.print("[dim]Resolving instance URL via nginx proxy manager...[/dim]")
             instance_url = resolve_instance_url(service)

@@ -224,8 +224,17 @@ def main():
             instance_url = resolve_instance_url(service)
             if instance_url:
                 console.print(f"[green]✓ Resolved to {instance_url}[/green]")
+                # Allow override for custom instances (e.g., Tailscale)
+                console.print(f"[dim]Leave blank to use {instance_url}[/dim]")
+                override = Prompt.ask(
+                    "[cyan]Override URL?[/cyan]",
+                    default=""
+                ).strip()
+                if override:
+                    instance_url = override
             else:
                 console.print(f"[yellow]⚠ Could not resolve {service}.christopf-local.duckdns.org[/yellow]")
+                instance_url = Prompt.ask("[cyan]Enter instance URL[/cyan]", default="").strip()
             console.print()
 
         # Local install & opencode registration

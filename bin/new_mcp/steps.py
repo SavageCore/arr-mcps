@@ -333,27 +333,54 @@ def register_in_readme(service: str, mcp_dir: Path, repo_path: Path) -> bool:
     else:
         console.print(f"[green]✓ Category: {category}[/green]")
 
-    # Suggest description from new repo's README
-    description = None
-    new_readme = mcp_dir / "README.md"
-    if new_readme.exists():
-        try:
-            with open(new_readme) as f:
-                lines = f.readlines()
-                # First non-empty, non-heading line after the title
-                for line in lines[1:]:
-                    line = line.strip()
-                    if line and not line.startswith("#"):
-                        description = line.rstrip(".")
-                        break
-        except:
-            pass
+    # Generate description via opencode
+    console.print()
+    console.print("[dim]Generating README description...[/dim]")
 
+    prompt = (
+        f"Write a single-line description (max 80 chars) for the {service}-mcp README entry. "
+        f"Describe what this MCP does in one concise sentence for a technical audience. "
+        f"Just the description, nothing else."
+    )
+
+    result = subprocess.run(
+        ["opencode", "run", "--dir", str(mcp_dir), prompt],
+        capture_output=True,
+        text=True,
+        timeout=30
+    )
+
+    description = None
+    if result.returncode == 0:
+        for line in result.stdout.split("\n"):
+            line = line.strip()
+            if line and len(line) < 100:  # Sanity check
+                description = line
+                break
+
+    # Fall back to README excerpt if AI generation fails
+    if not description:
+        new_readme = mcp_dir / "README.md"
+        if new_readme.exists():
+            try:
+                with open(new_readme) as f:
+                    lines = f.readlines()
+                    for line in lines[1:]:
+                        line = line.strip()
+                        if line and not line.startswith("#"):
+                            description = line.rstrip(".")
+                            break
+            except:
+                pass
+
+    # Show description and allow override
     if description:
-        console.print(f"[dim]Suggested description: {description}[/dim]")
-        description = Prompt.ask("Edit description", default=description)
+        console.print(f"[green]✓ Generated: {description}[/green]")
     else:
-        description = Prompt.ask("One-line description")
+        console.print("[yellow]⚠ Could not generate description[/yellow]")
+        description = Prompt.ask("One-line description", default="")
+        if not description:
+            return False
 
     # Render entry
     service_upper = service.upper()

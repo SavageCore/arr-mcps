@@ -81,8 +81,19 @@ uv tool install radarr_mcp-*.whl
 claude mcp add radarr --env RADARR_URL=... --env RADARR_API_KEY=... -- radarr-mcp
 ```
 
-## Arr stack helpers
+### [sonarr-mcp](https://github.com/arr-mcps/sonarr-mcp)
+[![Latest release](https://img.shields.io/github/v/release/arr-mcps/sonarr-mcp)](https://github.com/arr-mcps/sonarr-mcp/releases/latest)
 
+MCP server for [Sonarr](https://sonarr.tv) — read and manage your TV series
+library: series, episodes, files, queue, history, indexers, import lists,
+custom formats, and more (v3 API surface).
+
+```bash
+uv tool install sonarr_mcp-*.whl
+claude mcp add sonarr --env SONARR_URL=... --env SONARR_API_KEY=... -- sonarr-mcp
+```
+
+## Arr stack helpers
 ### [cleanuparr-mcp](https://github.com/arr-mcps/cleanuparr-mcp)
 [![Latest release](https://img.shields.io/github/v/release/arr-mcps/cleanuparr-mcp)](https://github.com/arr-mcps/cleanuparr-mcp/releases/latest)
 
@@ -95,6 +106,8 @@ claude mcp add cleanuparr --env CLEANUPARR_URL=... --env CLEANUPARR_API_KEY=... 
 ```
 
 ### [profilarr-mcp](https://github.com/arr-mcps/profilarr-mcp)
+
+
 [![Latest release](https://img.shields.io/github/v/release/arr-mcps/profilarr-mcp)](https://github.com/arr-mcps/profilarr-mcp/releases/latest)
 
 MCP server for [Profilarr](https://github.com/Dictionarry-Hub/Profilarr) —
@@ -215,14 +228,87 @@ Or launch from the desktop: **MCPsmith** in your application menu.
 **What it does:**
 
 1. Scaffolds a new `<service>-mcp` directory from the `tracearr-mcp` template
-2. Launches `opencode` plan agent to design the API surface (you review, then proceed)
-3. Launches `opencode` build-paid agent to generate the code
-4. Creates a GitHub repo, bumps version, tags, and pushes
-5. Registers the new MCP in this README (alphabetically within its category)
-6. Installs locally and registers with opencode
-7. Deploys to the remote Proxmox host (`192.168.50.3`) and registers there too
+2. Asks which model set should back the plan/build stages (arrow-key picker: `go`, `go-cheap`, `deepseek`, `deepseek-cheap`, or `--provider` to skip)
+3. Launches `opencode` plan agent (model from the chosen set) to design the API surface (you review, then proceed)
+4. Launches `opencode` build agent (model from the chosen set) to generate the code
+5. Creates a GitHub repo, bumps version, tags, and pushes
+6. Registers the new MCP in this README (alphabetically within its category)
+7. Installs locally and registers with opencode
+8. Deploys to the remote Proxmox host (`192.168.50.3`) and registers there too
 
 See `bin/new_mcp/` for the source. The per-MCP subfolders are gitignored, so the masterlist only tracks its own files.
+
+## Selecting MCP servers per task (`profile-mcp`)
+
+The desktop and Proxmox opencode configs register every MCP server, but loading
+all of them every session wastes context. `profile-mcp` (in `bin/`, installed
+alongside `new-mcp`) picks a subset of servers and applies it to the next
+opencode session — **regardless of which directory you launch opencode from**.
+
+```bash
+profile-mcp                 # interactive: pick a model set, then a profile or custom set
+profile-mcp --non-interactive deploy      # named profiles: deploy | media | diagnostics | none
+profile-mcp --set deepseek  # model set: free | free-cheap | go | go-cheap | deepseek | deepseek-cheap (prompts if omitted)
+profile-mcp --host proxmox  # resolve the proxmox host's server keys (auto-detected otherwise)
+profile-mcp --dir /path     # write the config somewhere other than the default
+```
+
+Named profiles:
+
+| Profile      | Servers |
+| ------------ | ------- |
+| `deploy`     | reverse proxy, firewall, Proxmox, indexer sync, dashboard (new arrstack item) |
+| `media`      | Radarr, Sonarr, Prowlarr, Seerr, bookshelf, Komga, Mylar3, Lidarr |
+| `diagnostics`| tracearr, Jellyfin, qBittorrent, netdata, dashbrr |
+| `none`       | no MCP servers at all |
+
+In the interactive picker, `n` selects the `none` profile and `c` opens a
+checklist (servers listed alphabetically). In that checklist, `↑`/`↓` move,
+`space` toggles a server, `e` loads a saved profile into the checklist to edit
+it, `s` saves the current selection as a new named profile (or updates the one
+being edited — prompted for a name with overwrite confirmation for a new save),
+`esc` returns to the profile list, and `enter` finishes. Entering with nothing
+selected also loads without MCPs. Saved profiles persist in
+`~/.config/profile-mcp/profiles.json`, appear in the profile list, and work via
+`profile-mcp --non-interactive <name>`.
+
+Model sets bind the `plan` / `build` / `heavy` agents to a provider for the session:
+
+| Set        | plan | build | heavy |
+| ---------- | ---- | ----- | ----- |
+| `free`     | opencode/nemotron-3-ultra-free | opencode/deepseek-v4-flash-free | disabled |
+| `free-cheap` | opencode/deepseek-v4-flash-free | opencode/deepseek-v4-flash-free | disabled |
+| `go`       | opencode-go/glm-5.2 | opencode-go/deepseek-v4-flash | opencode-go/gpt-5.6-luna |
+| `go-cheap` | opencode-go/deepseek-v4-flash | opencode-go/deepseek-v4-flash | disabled |
+| `deepseek` | deepseek/deepseek-v4-pro | deepseek/deepseek-v4-flash | deepseek/deepseek-v4-pro |
+| `deepseek-cheap` | deepseek/deepseek-v4-flash | deepseek/deepseek-v4-flash | disabled |
+
+Sets without a `heavy` model (e.g. `go-cheap`, `deepseek-cheap`) disable the
+heavy agent for the session instead of pinning it to an expensive model.
+
+It discovers the full server list from the host's global opencode config
+(desktop `~/Documents/christopfarr/opencode.json`, Proxmox
+`/root/.config/opencode/opencode.jsonc`) and launches opencode with an
+`OPENCODE_CONFIG_CONTENT` override that sets `enabled` on every known server and
+the `model` for `plan`/`build`/`heavy`, so only your chosen servers and provider
+load. Because that override merges *after* the project config, it wins
+regardless of the working directory — everything else (instructions,
+permissions, agent modes) still loads normally, only the MCP set and the three
+models are scoped for this session. It also writes the same config to
+`opencode.json` under the profile name as a reference.
+
+Usage on the Proxmox host (works from any directory):
+
+```bash
+ssh root@192.168.50.3
+profile-mcp --host proxmox --non-interactive media --set deepseek
+opencode
+```
+
+See `bin/profile_mcp/` for the source. Built-in profiles and model sets are
+defined in `bin/profile_mcp/profiles.py`; edit `PROFILES` or `MODEL_SETS` there
+to change the groupings. Custom profiles saved from the wizard live in
+`~/.config/profile-mcp/profiles.json`.
 
 ## License
 

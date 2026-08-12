@@ -1,0 +1,11 @@
+# Per-MCP working copies — each is its own git repo with its own remote, kept
+# under this tree for convenience only. A new MCP named <service>-mcp is
+# ignored automatically.
+/*-mcp/
+
+# Python cruft (in case tooling is run from this root)
+__pycache__/
+*.pyc
+.pytest_cache/
+dist/
+*.egg-info/

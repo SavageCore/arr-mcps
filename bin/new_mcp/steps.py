@@ -1,5 +1,6 @@
 """Individual step implementations for the new-MCP workflow."""
 
+import json
 import os
 import re
 import subprocess
@@ -16,6 +17,15 @@ from .templates import PLAN_PROMPT, README_ENTRY
 
 
 console = rich.console.Console()
+
+# The christopfarr workspace keeps all its MCP registrations in a project-scoped
+# (gitignored) opencode config, NOT the global ~/.config/opencode/opencode.json.
+# `opencode mcp add` always writes to the global config and ignores the project
+# scope, so we write directly into the config file opencode loads for this
+# workspace instead.
+LOCAL_OPENCODE_CONFIG = Path.home() / "Documents" / "christopfarr" / "opencode.json"
+REMOTE_OPENCODE_CONFIG = "/root/.config/opencode/opencode.jsonc"
+REMOTE_HOST = "192.168.50.3"
 
 # Log file handle (will be set by cli.py)
 _log_file_handle = None
@@ -506,6 +516,88 @@ def register_in_readme(service: str, mcp_dir: Path, repo_path: Path) -> bool:
     return True
 
 
+def _upsert_mcp_entry(config_path: Path, service: str, instance_url: str, auth_token: str, command: list[str]) -> bool:
+    """Upsert the <service>-mcp entry into an opencode config file.
+
+    `opencode mcp add` always writes to the *global* config and ignores the
+    project-scoped config, so this edits the config JSON directly.
+    """
+    if not config_path.exists():
+        console.print(f"[red]Config not found: {config_path}[/red]")
+        return False
+
+    try:
+        with open(config_path) as f:
+            data = json.load(f)
+    except Exception as e:
+        console.print(f"[red]Failed to read {config_path}: {e}[/red]")
+        return False
+
+    service_upper = service.upper()
+    mcp = data.setdefault("mcp", {})
+    mcp[f"{service}-mcp"] = {
+        "type": "local",
+        "command": command,
+        "enabled": True,
+        "environment": {
+            f"{service_upper}_URL": instance_url,
+            f"{service_upper}_API_KEY": auth_token,
+        },
+    }
+
+    try:
+        with open(config_path, "w") as f:
+            json.dump(data, f, indent=2)
+            f.write("\n")
+    except Exception as e:
+        console.print(f"[red]Failed to write {config_path}: {e}[/red]")
+        return False
+
+    console.print(f"[green]✓ Upserted {service}-mcp in {config_path}[/green]")
+    return True
+
+
+def _upsert_remote_mcp_entry(service: str, instance_url: str, auth_token: str) -> bool:
+    """Upsert the <service>-mcp entry into the remote host's opencode config.
+
+    Writes a small python helper to the remote and runs it, so the SSH call is
+    a single python3 -c invocation that edits the JSONC in place.
+    """
+    import base64
+
+    service_upper = service.upper()
+    script = (
+        "import json,os\n"
+        f"p={REMOTE_OPENCODE_CONFIG!r}\n"
+        "d=json.load(open(p))\n"
+        "m=d.setdefault('mcp',{})\n"
+        f"m[{f'{service}-mcp'!r}]={{\n"
+        " 'type':'local',\n"
+        f" 'command':[os.path.expanduser('~/.local/bin/{service}-mcp')],\n"
+        " 'enabled':True,\n"
+        " 'environment':{\n"
+        f"  {f'{service_upper}_URL'!r}:{instance_url!r},\n"
+        f"  {f'{service_upper}_API_KEY'!r}:{auth_token!r},\n"
+        " }\n"
+        "}\n"
+        "json.dump(d,open(p,'w'),indent=2)\n"
+        "print('ok')\n"
+    )
+    encoded = base64.b64encode(script.encode()).decode()
+
+    result = subprocess.run(
+        ["ssh", f"root@{REMOTE_HOST}", "--",
+         f"echo {encoded} | base64 -d | python3"],
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    if result.returncode != 0 or "ok" not in result.stdout:
+        console.print(f"[yellow]⚠ Remote opencode registration failed: {result.stderr.strip()} {result.stdout.strip()}[/yellow]")
+        return False
+    return True
+
+
 def install_locally(service: str, mcp_dir: Path, instance_url: str = "", auth_token: str = "") -> bool:
     """Install the new MCP locally and register with opencode if credentials provided."""
     console.print()
@@ -529,18 +621,17 @@ def install_locally(service: str, mcp_dir: Path, instance_url: str = "", auth_to
         console.print()
         console.print("[dim]Registering with opencode...[/dim]")
 
-        service_upper = service.upper()
+        # NOTE: `opencode mcp add` always writes to the GLOBAL config
+        # (~/.config/opencode/opencode.json) and ignores project scope. The
+        # christopfarr workspace loads MCPs from the project-scoped config
+        # (LOCAL_OPENCODE_CONFIG), so we edit that file directly.
+        command = [str(Path.home() / ".local" / "bin" / f"{service}-mcp")]
         with console.status(f"[bold]Adding {service}-mcp to opencode...[/bold]"):
-            result = subprocess.run(
-                ["opencode", "mcp", "add", service,
-                 f"--env", f"{service_upper}_URL={instance_url}",
-                 f"--env", f"{service_upper}_API_KEY={auth_token}",
-                 "--", f"{service}-mcp"],
-                capture_output=True,
-                text=True
+            ok = _upsert_mcp_entry(
+                LOCAL_OPENCODE_CONFIG, service, instance_url, auth_token, command
             )
-            if result.returncode != 0:
-                console.print(f"[yellow]⚠ opencode registration had issues: {result.stderr}[/yellow]")
+            if not ok:
+                console.print(f"[yellow]⚠ opencode registration had issues[/yellow]")
                 return False
 
         console.print(f"[green]✓ Registered {service}-mcp with opencode[/green]")
@@ -593,25 +684,14 @@ def install_remotely(service: str, repo: str, instance_url: str = "", auth_token
         console.print()
         console.print("[dim]Registering with opencode on remote host...[/dim]")
 
-        service_upper = service.upper()
-        cmd = (
-            f"opencode mcp add {service} "
-            f"--env {service_upper}_URL={instance_url} "
-            f"--env {service_upper}_API_KEY={auth_token} "
-            f"-- {service}-mcp"
-        )
-
-        result = subprocess.run(
-            ["ssh", f"root@{host}", "--", cmd],
-            capture_output=True,
-            text=True,
-            timeout=60
-        )
-
-        if result.returncode != 0:
+        # NOTE: `opencode mcp add` on the remote would write to
+        # /root/.config/opencode/opencode.json (global) but the remote opencode
+        # loads MCPs from /root/.config/opencode/opencode.jsonc. Edit that file
+        # directly so the registration actually applies.
+        if _upsert_remote_mcp_entry(service, instance_url, auth_token):
+            console.print(f"[green]✓ Registered {service}-mcp on {host} opencode[/green]")
+        else:
             console.print(f"[yellow]⚠ Remote opencode registration had issues[/yellow]")
             # Don't fail the whole deploy, show instructions instead
-        else:
-            console.print(f"[green]✓ Registered {service}-mcp on {host} opencode[/green]")
 
     return True

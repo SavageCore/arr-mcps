@@ -73,6 +73,18 @@ uv tool install profilarr_mcp-*.whl
 claude mcp add profilarr --env PROFILARR_URL=... --env PROFILARR_API_KEY=... -- profilarr-mcp
 ```
 
+### [prowlarr-mcp](https://github.com/SavageCore/prowlarr-mcp)
+[![Latest release](https://img.shields.io/github/v/release/SavageCore/prowlarr-mcp)](https://github.com/SavageCore/prowlarr-mcp/releases/latest)
+
+MCP server for [Prowlarr](https://github.com/Prowlarr/Prowlarr) — manage your
+indexers, applications, download clients, indexer proxies, notifications, tags,
+and custom filters. Run cross-indexer searches and system commands (v1 API surface).
+
+```bash
+uv tool install prowlarr_mcp-*.whl
+claude mcp add prowlarr --env PROWLARR_URL=... --env PROWLARR_API_KEY=... -- prowlarr-mcp
+```
+
 ## Download clients
 
 ### [qbittorrent-mcp](https://github.com/SavageCore/qbittorrent-mcp)

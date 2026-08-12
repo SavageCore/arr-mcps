@@ -11,6 +11,13 @@ working copies live here as gitignored subfolders.
 Built with [FastMCP](https://gofastmcp.com). Each server is a single wheel
 installed with `uv`, then registered with your MCP client.
 
+Every server here exposes ~5-15 resource-scoped tools rather than one tool
+per REST endpoint — each tool takes an `operation` parameter plus an
+`arguments` dict, so the full API surface stays available without injecting
+hundreds of tool schemas into your MCP client's context on every session.
+See a server's own README (e.g. [sonarr-mcp](https://github.com/SavageCore/sonarr-mcp))
+for its exact tool-to-operation mapping.
+
 ## Media servers
 
 ### [bookshelf-mcp](https://github.com/SavageCore/bookshelf-mcp)

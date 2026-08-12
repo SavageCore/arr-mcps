@@ -19,6 +19,12 @@ and its own release lifecycle; this repo only tracks its own files.
 3. Use `tracearr-mcp/` as the template — mirror its Makefile, `release.yml` workflow,
    test patterns, and AGENTS.md conventions. Keep the server single-file unless
    it clearly outgrows that.
+4. **Expose ~5-15 resource-scoped portmanteau tools, not one MCP tool per REST
+   endpoint** — see `AGENTS.md`'s "Tool design standard" for the full pattern
+   (an `operation`-enum dispatcher per resource group, endpoint functions kept
+   as plain callables looked up by name). A server that registers one tool
+   per endpoint blows the MCP context budget on every session's first
+   message; this is the single most important convention in this repo.
 
 The `<service>-mcp` subfolders are gitignored (`/*-mcp/`), so the masterlist
 repo never tracks their contents.

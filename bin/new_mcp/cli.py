@@ -150,17 +150,9 @@ def main():
     console.print("[dim](instance URLs resolved via nginx proxy manager)[/dim]")
     console.print()
 
-    auth_token = ""
-    ask_auth = Confirm.ask(
-        "[bold]Register with opencode? (requires API key)[/bold]",
-        default=True
-    )
-
-    if ask_auth:
-        from getpass import getpass
-        console.print("[cyan]API Key or Auth Token[/cyan]:")
-        auth_token = getpass().strip()
-
+    from getpass import getpass
+    console.print("[cyan]API Key or Auth Token (for opencode registration)[/cyan]:")
+    auth_token = getpass().strip()
     console.print()
 
     # Ask about auto-approve for batch runs

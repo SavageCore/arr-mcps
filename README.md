@@ -77,6 +77,17 @@ claude mcp add qui --env QUI_URL=... --env QUI_API_KEY=... -- qui-mcp
 
 ## Monitoring
 
+### [dashbrr-mcp](https://github.com/SavageCore/dashbrr-mcp)
+[![Latest release](https://img.shields.io/github/v/release/SavageCore/dashbrr-mcp)](https://github.com/SavageCore/dashbrr-mcp/releases/latest)
+
+MCP server exposing the [Dashbrr](https://github.com/autobrr/dashbrr) REST API as tools, so an LLM can read and manage your dashbrr instance.
+
+```bash
+uv tool install dashbrr_mcp-*.whl
+claude mcp add dashbrr --env DASHBRR_URL=... --env DASHBRR_API_KEY=... -- dashbrr-mcp
+```
+
+
 ### [tracearr-mcp](https://github.com/SavageCore/tracearr-mcp)
 [![Latest release](https://img.shields.io/github/v/release/SavageCore/tracearr-mcp)](https://github.com/SavageCore/tracearr-mcp/releases/latest)
 
@@ -89,27 +100,26 @@ uv tool install tracearr_mcp-*.whl
 claude mcp add tracearr --env TRACEARR_URL=... --env TRACEARR_API_KEY=... -- tracearr-mcp
 ```
 
-## Dashboards
-
-### [dashy-mcp](https://github.com/SavageCore/dashy-mcp)
-[![Latest release](https://img.shields.io/github/v/release/SavageCore/dashy-mcp)](https://github.com/SavageCore/dashy-mcp/releases/latest)
-
-MCP server for [Dashy](https://github.com/lissy93/dashy) — read and edit your
-dashboard config: sections, items, and top-level keys.
-
-```bash
-uv tool install dashy_mcp-*.whl
-claude mcp add dashy --env DASHY_URL=... --env DASHY_TOKEN=... -- dashy-mcp
-```
-
 ## Adding a new MCP
 
-See [`new.md`](new.md) for the full prompt template. Use `dashy-mcp/` as the
+See [`new.md`](new.md) for the full prompt template and [`bin/new-mcp`](bin/new-mcp)
+for the end-to-end pipeline that orchestrates it. Use `tracearr-mcp/` as the
 base — mirror its Makefile, release workflow, test patterns, and AGENTS.md
 conventions. After the first release, self-register the new MCP by adding an
 entry to this README in the appropriate category and committing to this
 repository. The per-MCP subfolders are gitignored, so the masterlist only ever
 tracks its own files.
+
+To stand up a new MCP:
+
+```bash
+bin/new-mcp all <service> --repo <upstream-user>/<upstream-repo>
+```
+
+It scaffolds from `tracearr-mcp/`, prints the Plan prompt for you to run in
+opencode, then (once you've committed the initial build) does release →
+register → install, each with a `[Y/n]` gate. See `bin/new-mcp --help` for the
+individual `scaffold`/`release`/`register`/`install` stages.
 
 ## License
 

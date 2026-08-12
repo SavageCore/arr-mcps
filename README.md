@@ -63,6 +63,16 @@ claude mcp add profilarr --env PROFILARR_URL=... --env PROFILARR_API_KEY=... -- 
 
 ## Download clients
 
+### [qbittorrent-mcp](https://github.com/SavageCore/qbittorrent-mcp)
+[![Latest release](https://img.shields.io/github/v/release/SavageCore/qbittorrent-mcp)](https://github.com/SavageCore/qbittorrent-mcp/releases/latest)
+
+MCP server for [qBittorrent](https://github.com/qbittorrent/qBittorrent) — manage torrents, categories, tags, RSS, search, and the WebUI API v2.
+
+```bash
+uv tool install qbittorrent_mcp-*.whl
+claude mcp add qbittorrent --env QBITTORRENT_URL=... --env QBITTORRENT_API_KEY=... -- qbittorrent-mcp
+```
+
 ### [qui-mcp](https://github.com/SavageCore/qui-mcp)
 [![Latest release](https://img.shields.io/github/v/release/SavageCore/qui-mcp)](https://github.com/SavageCore/qui-mcp/releases/latest)
 

@@ -524,8 +524,18 @@ def register_in_readme(service: str, mcp_dir: Path, repo_path: Path) -> bool:
         console.print(f"[red]Failed to write README: {e}[/red]")
         return False
 
-    # Commit in root repo
-    with console.status("[bold]Committing to masterlist...[/bold]"):
+    # Commit in root repo — always on main, never on a feature branch
+    with console.status("[bold]Committing to masterlist on main...[/bold]"):
+        subprocess.run(
+            ["git", "checkout", "main"],
+            cwd=str(repo_path),
+            capture_output=True
+        )
+        subprocess.run(
+            ["git", "pull", "--ff-only", "origin", "main"],
+            cwd=str(repo_path),
+            capture_output=True
+        )
         subprocess.run(
             ["git", "add", "README.md"],
             cwd=str(repo_path),
@@ -541,7 +551,7 @@ def register_in_readme(service: str, mcp_dir: Path, repo_path: Path) -> bool:
             console.print(f"[yellow]Commit skipped (no changes or error): {result.stderr}[/yellow]")
         else:
             subprocess.run(
-                ["git", "push"],
+                ["git", "push", "origin", "main"],
                 cwd=str(repo_path),
                 capture_output=True
             )

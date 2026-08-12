@@ -56,13 +56,17 @@ def resolve_instance_url(service: str) -> str:
         f"Just respond with 'IP:PORT' (e.g., 192.168.1.100:5000), nothing else."
     )
 
-    result = subprocess.run(
-        ["opencode", "run", "--dir", str(Path.home() / "Documents/christopfarr"),
-         prompt],
-        capture_output=True,
-        text=True,
-        timeout=30
-    )
+    try:
+        result = subprocess.run(
+            ["opencode", "run", "--dir", str(Path.home() / "Documents/christopfarr"),
+             prompt],
+            capture_output=True,
+            text=True,
+            timeout=120
+        )
+    except subprocess.TimeoutExpired:
+        console.print("[yellow]⚠ opencode URL resolution timed out; enter the instance URL manually[/yellow]")
+        return ""
 
     if result.returncode != 0:
         return ""
@@ -309,15 +313,19 @@ def register_in_readme(service: str, mcp_dir: Path, repo_path: Path) -> bool:
         f"Just respond with the category name, nothing else."
     )
 
-    result = subprocess.run(
-        ["opencode", "run", "--dir", str(mcp_dir), prompt],
-        capture_output=True,
-        text=True,
-        timeout=30
-    )
+    try:
+        result = subprocess.run(
+            ["opencode", "run", "--dir", str(mcp_dir), prompt],
+            capture_output=True,
+            text=True,
+            timeout=120
+        )
+    except subprocess.TimeoutExpired:
+        console.print("[yellow]⚠ opencode category pick timed out; choosing manually[/yellow]")
+        result = None
 
     category = None
-    if result.returncode == 0:
+    if result is not None and result.returncode == 0:
         for line in result.stdout.split("\n"):
             line = line.strip()
             if line and line in headings:
@@ -354,15 +362,19 @@ def register_in_readme(service: str, mcp_dir: Path, repo_path: Path) -> bool:
         f"Just the description, nothing else."
     )
 
-    result = subprocess.run(
-        ["opencode", "run", "--dir", str(mcp_dir), prompt],
-        capture_output=True,
-        text=True,
-        timeout=30
-    )
+    try:
+        result = subprocess.run(
+            ["opencode", "run", "--dir", str(mcp_dir), prompt],
+            capture_output=True,
+            text=True,
+            timeout=120
+        )
+    except subprocess.TimeoutExpired:
+        console.print("[yellow]⚠ opencode description generation timed out; using README excerpt[/yellow]")
+        result = None
 
     description = None
-    if result.returncode == 0:
+    if result is not None and result.returncode == 0:
         for line in result.stdout.split("\n"):
             line = line.strip()
             if line and len(line) < 100:  # Sanity check

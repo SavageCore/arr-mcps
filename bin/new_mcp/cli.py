@@ -50,17 +50,18 @@ def save_log():
         console.print(f"[yellow]Warning: Could not save log file: {e}[/yellow]")
 
 
-def open_repo(gh_url: str, app: str = "browser"):
+def open_repo(gh_url: str, local_dir: Path, app: str = "browser"):
     """Open GitHub repo in browser or GitKraken.
 
     Args:
         gh_url: Full GitHub URL (https://github.com/owner/repo)
+        local_dir: Local checkout directory (used by GitKraken)
         app: 'browser' or 'gitkraken'
     """
     if app == "gitkraken":
-        # GitKraken URL scheme
-        gk_url = f"gitkraken://repo/{gh_url}"
-        subprocess.run(["xdg-open", gk_url], capture_output=True)
+        # GitKraken opens the local checkout directory directly,
+        # like `gitkraken --path <dir>` (not the gitkraken:// URL scheme)
+        subprocess.run(["gitkraken", "--path", str(local_dir)], capture_output=True)
     else:
         subprocess.run(["xdg-open", gh_url], capture_output=True)
 
@@ -285,6 +286,7 @@ def main():
         if len(completed) == 1:
             service, repo = completed[0]
             gh_url = f"https://github.com/SavageCore/{service}-mcp"
+            mcp_dir = REPO_ROOT / f"{service}-mcp"
             console.print(f"[dim]{gh_url}[/dim]")
             choice = Prompt.ask(
                 "[bold]Open repo?[/bold]",
@@ -292,10 +294,10 @@ def main():
                 default="browser"
             )
             if choice == "both":
-                open_repo(gh_url, "browser")
-                open_repo(gh_url, "gitkraken")
+                open_repo(gh_url, mcp_dir, "browser")
+                open_repo(gh_url, mcp_dir, "gitkraken")
             elif choice != "no":
-                open_repo(gh_url, choice)
+                open_repo(gh_url, mcp_dir, choice)
         else:
             console.print("[bold]Completed repos:[/bold]")
             for service, repo in completed:
@@ -308,12 +310,14 @@ def main():
             if choice == "both":
                 for service, repo in completed:
                     gh_url = f"https://github.com/SavageCore/{service}-mcp"
-                    open_repo(gh_url, "browser")
-                    open_repo(gh_url, "gitkraken")
+                    mcp_dir = REPO_ROOT / f"{service}-mcp"
+                    open_repo(gh_url, mcp_dir, "browser")
+                    open_repo(gh_url, mcp_dir, "gitkraken")
             elif choice != "no":
                 for service, repo in completed:
                     gh_url = f"https://github.com/SavageCore/{service}-mcp"
-                    open_repo(gh_url, choice)
+                    mcp_dir = REPO_ROOT / f"{service}-mcp"
+                    open_repo(gh_url, mcp_dir, choice)
 
     # Keep terminal open for review
     console.print()

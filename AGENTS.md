@@ -23,6 +23,13 @@ Each server is a separate FastMCP project with its own `pyproject.toml`,
    cd /home/savagecore/Documents/christopfarr/mcp/<name>
    git fetch origin && git reset --hard origin/main
    ```
+6. If the server is deployed to the Proxmox host (`192.168.50.3`, root SSH
+   key), pull the repo there and reinstall the `uv tool`:
+   ```
+   ssh root@192.168.50.3 -- 'cd /root/<name> && git fetch origin && git reset --hard origin/main'
+   ssh root@192.168.50.3 -- 'cd /root/<name> && uv tool install --force .'
+   ```
+   Hosts run MCPs via `uv tool install` → `/root/.local/bin/<name>`.
 
 ## Per-server AGENTS.md
 Each server repo has its own `AGENTS.md` with specifics (tests, live integration

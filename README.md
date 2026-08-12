@@ -36,6 +36,18 @@ uv tool install mylar3_mcp-*.whl
 claude mcp add mylar3 --env MYLAR_URL=... --env MYLAR_API_KEY=... -- mylar3-mcp
 ```
 
+### [radarr-mcp](https://github.com/SavageCore/radarr-mcp)
+[![Latest release](https://img.shields.io/github/v/release/SavageCore/radarr-mcp)](https://github.com/SavageCore/radarr-mcp/releases/latest)
+
+MCP server for [Radarr](https://radarr.video) — read and manage your movie
+library: movies, files, queue, history, indexers, import lists, custom formats,
+and more (v3 API surface).
+
+```bash
+uv tool install radarr_mcp-*.whl
+claude mcp add radarr --env RADARR_URL=... --env RADARR_API_KEY=... -- radarr-mcp
+```
+
 ## Arr stack helpers
 
 ### [cleanuparr-mcp](https://github.com/SavageCore/cleanuparr-mcp)

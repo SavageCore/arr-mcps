@@ -85,6 +85,18 @@ uv tool install prowlarr_mcp-*.whl
 claude mcp add prowlarr --env PROWLARR_URL=... --env PROWLARR_API_KEY=... -- prowlarr-mcp
 ```
 
+### [seerr-mcp](https://github.com/SavageCore/seerr-mcp)
+[![Latest release](https://img.shields.io/github/v/release/SavageCore/seerr-mcp)](https://github.com/SavageCore/seerr-mcp/releases/latest)
+
+MCP server for [Seerr](https://github.com/seerr-team/seerr) — search and
+manage media requests, approvals, users, issues, watchlists, and settings (v1
+REST API surface).
+
+```bash
+uv tool install seerr_mcp-*.whl
+claude mcp add seerr --env SEERR_URL=... --env SEERR_API_KEY=... -- seerr-mcp
+```
+
 ## Download clients
 
 ### [qbittorrent-mcp](https://github.com/SavageCore/qbittorrent-mcp)

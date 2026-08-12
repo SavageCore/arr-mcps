@@ -57,6 +57,23 @@ def set_log_file(file_path: Path):
         pass
 
 
+def normalize_instance_url(url: str) -> str:
+    """Ensure an instance URL carries an http:// or https:// scheme.
+
+    NPM resolution returns a bare host:port (e.g. 192.168.50.20:8787), which
+    breaks FastMCP clients that require a full URL. Missing schemes default to
+    http://; protocol-relative // hosts get https://.
+    """
+    url = (url or "").strip()
+    if not url:
+        return url
+    if re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*://", url):
+        return url
+    if url.startswith("//"):
+        return "https:" + url
+    return "http://" + url
+
+
 def resolve_instance_url(service: str) -> str:
     """Query opencode agent to resolve duckdns URL to IP:port via nginx proxy manager.
 
@@ -92,10 +109,10 @@ def resolve_instance_url(service: str) -> str:
         line = line.strip()
         # Look for pattern IP:PORT
         if ":" in line and any(c.isdigit() for c in line.split(":")[0]):
-            return line
+            return normalize_instance_url(line)
         # Also accept just IP if that's all we get
         if all(c.isdigit() or c == "." for c in line.split(":")[0]):
-            return line
+            return normalize_instance_url(line)
 
     return ""
 
@@ -578,6 +595,7 @@ def _upsert_mcp_entry(config_path: Path, service: str, instance_url: str, auth_t
         return False
 
     service_upper = service.upper()
+    instance_url = normalize_instance_url(instance_url)
     mcp = data.setdefault("mcp", {})
     mcp[f"{service}-mcp"] = {
         "type": "local",
@@ -610,6 +628,7 @@ def _upsert_remote_mcp_entry(service: str, instance_url: str, auth_token: str) -
     import base64
 
     service_upper = service.upper()
+    instance_url = normalize_instance_url(instance_url)
     script = (
         "import json,os\n"
         f"p={REMOTE_OPENCODE_CONFIG!r}\n"

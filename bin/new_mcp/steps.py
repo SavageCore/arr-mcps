@@ -179,7 +179,8 @@ def release_to_github(service: str, repo: str, mcp_dir: Path) -> bool:
         # Create repo (idempotent via || true)
         subprocess.run(
             ["gh", "repo", "create", gh_repo, "--public",
-             "--description", f"Model Context Protocol for {repo}"],
+             "--description", f"Model Context Protocol for {repo}",
+             "--homepage", "https://github.com/SavageCore/arr-mcps"],
             cwd=str(mcp_dir),
             capture_output=True
         )
@@ -437,42 +438,40 @@ def register_in_readme(service: str, mcp_dir: Path, repo_path: Path) -> bool:
         flags=re.MULTILINE | re.DOTALL
     )
 
-    # Re-insert after category, deduplicated
+    # Re-insert after category, deduplicated, sorted alphabetically
     match = re.search(f"^## {re.escape(category)}$", new_content, re.MULTILINE)
     if match:
         split_pos = match.end()
-        lines_after = new_content[split_pos:].lstrip("\n").split("\n")
+        section_start = split_pos
 
-        # Collect entries in this section
-        entries = []
-        for i, line in enumerate(lines_after):
-            if line.startswith("## "):
-                break
-            if line.startswith("### ["):
-                entries.append((line, i))
+        # Find the end of this category's section (next ## or EOF)
+        next_heading = re.search(r"\n## ", new_content[split_pos:])
+        if next_heading:
+            section_end = split_pos + next_heading.start() + 1
+        else:
+            section_end = len(new_content)
 
-        # Re-sort and insert
+        section_text = new_content[section_start:section_end]
+
+        # Split section into entry blocks (from each ### [ up to next ### [, ##, or end)
+        entry_blocks = re.split(r"(?=\n### \[)", section_text)
+        # First block is leading whitespace/blank lines before the first entry
+        leading_ws = entry_blocks[0]
+
+        # Remaining blocks are actual entries
+        entries = entry_blocks[1:] if len(entry_blocks) > 1 else []
+
         if entries:
-            entries_sorted = sorted(
-                entries,
-                key=lambda x: x[0][4:-1].lower()  # extract name from ### [name]
-            )
+            # Sort entries by name (extracted from ### [name]...)
+            def extract_name(block):
+                match = re.search(r"^### \[([^\]]+)\]", block)
+                return match.group(1).lower() if match else ""
 
-            # Build new section
-            new_section = "".join(line + "\n" for line, _ in entries_sorted)
+            entries_sorted = sorted(entries, key=extract_name)
 
-            # Replace section
-            first_entry_line = entries[0][1]
-            last_entry_line = entries[-1][1]
-            end_of_last = sum(
-                len(lines_after[j]) + 1 for j in range(last_entry_line + 1)
-            )
-
-            new_content = (
-                new_content[:split_pos + 1] +
-                new_section + "\n" +
-                new_content[split_pos + end_of_last:]
-            )
+            # Rebuild section
+            new_section = leading_ws + "".join(entries_sorted)
+            new_content = new_content[:section_start] + new_section + new_content[section_end:]
 
     try:
         with open(readme, "w") as f:

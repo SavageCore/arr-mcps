@@ -41,7 +41,7 @@ claude mcp add mylar3 --env MYLAR_URL=... --env MYLAR_API_KEY=... -- mylar3-mcp
 ### [cleanuparr-mcp](https://github.com/SavageCore/cleanuparr-mcp)
 [![Latest release](https://img.shields.io/github/v/release/SavageCore/cleanuparr-mcp)](https://github.com/SavageCore/cleanuparr-mcp/releases/latest)
 
-MCP server for [Cleanuparr](https://github.com/evilhero/Cleanuparr) — inspect
+MCP server for [Cleanuparr](https://github.com/Cleanuparr/Cleanuparr) — inspect
 status, history, statistics, jobs, and configuration of your arr stack cleanup.
 
 ```bash

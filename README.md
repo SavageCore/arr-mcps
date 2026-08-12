@@ -13,6 +13,19 @@ installed with `uv`, then registered with your MCP client.
 
 ## Media servers
 
+### [bookshelf-mcp](https://github.com/SavageCore/bookshelf-mcp)
+[![Latest release](https://img.shields.io/github/v/release/SavageCore/bookshelf-mcp)](https://github.com/SavageCore/bookshelf-mcp/releases/latest)
+
+MCP server for [Bookshelf](https://github.com/pennydreadful/bookshelf) — read
+and manage your book library: authors, books, editions, series, files, the
+download queue, history, indexers, import lists, custom formats, tags, and more
+(v1 REST API surface).
+
+```bash
+uv tool install bookshelf_mcp-*.whl
+claude mcp add bookshelf --env BOOKSHELF_URL=... --env BOOKSHELF_API_KEY=... -- bookshelf-mcp
+```
+
 ### [komga-mcp](https://github.com/SavageCore/komga-mcp)
 [![Latest release](https://img.shields.io/github/v/release/SavageCore/komga-mcp)](https://github.com/SavageCore/komga-mcp/releases/latest)
 

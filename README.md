@@ -204,10 +204,25 @@ claude mcp add tracearr --env TRACEARR_URL=... --env TRACEARR_API_KEY=... -- tra
 
 ## Adding a new MCP
 
-See [`steps.md`](steps.md) — it covers the full flow end-to-end, from
-scaffolding the new MCP off `tracearr-mcp/` to releasing it, self-registering
-it in this README, and installing it locally and on the server. The per-MCP
-subfolders are gitignored, so the masterlist only ever tracks its own files.
+Use the `new-mcp` wizard to automate scaffolding, building, releasing, and installing new MCP servers:
+
+```bash
+new-mcp https://github.com/Sonarr/Sonarr https://github.com/Lidarr/Lidarr
+```
+
+Or launch from the desktop: **MCPsmith** in your application menu.
+
+**What it does:**
+
+1. Scaffolds a new `<service>-mcp` directory from the `tracearr-mcp` template
+2. Launches `opencode` plan agent to design the API surface (you review, then proceed)
+3. Launches `opencode` build-paid agent to generate the code
+4. Creates a GitHub repo, bumps version, tags, and pushes
+5. Registers the new MCP in this README (alphabetically within its category)
+6. Installs locally and registers with opencode
+7. Deploys to the remote Proxmox host (`192.168.50.3`) and registers there too
+
+See `bin/new_mcp/` for the source. The per-MCP subfolders are gitignored, so the masterlist only tracks its own files.
 
 ## License
 

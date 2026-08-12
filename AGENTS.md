@@ -88,9 +88,12 @@ independently-arrived-at pattern this one converged on.
    `/root/.config/opencode/opencode.jsonc`.
 
 ## New-MCP flow
-Follow [`steps.md`](steps.md) end-to-end manually: scaffold from
-`tracearr-mcp/`, build, release (create repo, bump, tag, push), register in
-README, install.
+Use the `new-mcp` command-line wizard (installed as a `uv` tool in `bin/`):
+```bash
+new-mcp https://github.com/Sonarr/Sonarr
+```
+It automates scaffolding, build, release, README registration, and local+remote install.
+See [`README.md#adding-a-new-mcp`](README.md#adding-a-new-mcp) for details.
 
 ## Per-server AGENTS.md
 Each server repo has its own `AGENTS.md` with specifics (tests, live integration

@@ -1,0 +1,13 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "new-mcp"
+version = "0.0.0"
+description = "Scaffold and release new arr-mcp servers"
+requires-python = ">=3.10"
+dependencies = ["rich>=13.0.0"]
+
+[project.scripts]
+new-mcp = "new_mcp.cli:main"

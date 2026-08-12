@@ -34,8 +34,9 @@ Each server is a separate FastMCP project with its own `pyproject.toml`,
    `/root/.config/opencode/opencode.jsonc`.
 
 ## New-MCP flow
-Follow [`new.md`](new.md) end-to-end manually: scaffold from `tracearr-mcp/`,
-build, release (create repo, bump, tag, push), register in README, install.
+Follow [`steps.md`](steps.md) end-to-end manually: scaffold from
+`tracearr-mcp/`, build, release (create repo, bump, tag, push), register in
+README, install.
 
 ## Per-server AGENTS.md
 Each server repo has its own `AGENTS.md` with specifics (tests, live integration

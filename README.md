@@ -123,12 +123,10 @@ claude mcp add tracearr --env TRACEARR_URL=... --env TRACEARR_API_KEY=... -- tra
 
 ## Adding a new MCP
 
-See [`new.md`](new.md) for the prompt template. Use `tracearr-mcp/` as the
-base — mirror its Makefile, release workflow, test patterns, and AGENTS.md
-conventions. After the first release, self-register the new MCP by adding an
-entry to this README in the appropriate category and committing to this
-repository. The per-MCP subfolders are gitignored, so the masterlist only ever
-tracks its own files.
+See [`steps.md`](steps.md) — it covers the full flow end-to-end, from
+scaffolding the new MCP off `tracearr-mcp/` to releasing it, self-registering
+it in this README, and installing it locally and on the server. The per-MCP
+subfolders are gitignored, so the masterlist only ever tracks its own files.
 
 ## License
 

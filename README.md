@@ -146,18 +146,6 @@ uv tool install dashbrr_mcp-*.whl
 claude mcp add dashbrr --env DASHBRR_URL=... --env DASHBRR_API_KEY=... -- dashbrr-mcp
 ```
 
-
-### [dashbrr-mcp](https://github.com/SavageCore/dashbrr-mcp)
-[![Latest release](https://img.shields.io/github/v/release/SavageCore/dashbrr-mcp)](https://github.com/SavageCore/dashbrr-mcp/releases/latest)
-
-MCP server exposing the [Dashbrr](https://github.com/autobrr/dashbrr) REST API as tools, so an LLM can read and manage your dashbrr instance.
-
-```bash
-uv tool install dashbrr_mcp-*.whl
-claude mcp add dashbrr --env DASHBRR_URL=... --env DASHBRR_API_KEY=... -- dashbrr-mcp
-```
-
-
 ### [tracearr-mcp](https://github.com/SavageCore/tracearr-mcp)
 [![Latest release](https://img.shields.io/github/v/release/SavageCore/tracearr-mcp)](https://github.com/SavageCore/tracearr-mcp/releases/latest)
 

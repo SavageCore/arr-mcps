@@ -9,14 +9,14 @@ and its own release lifecycle; this repo only tracks its own files.
 1. Create the working copy as its own git repo:
    ```bash
    cd ~/Git/arr-mcps
-   cp -r dashy-mcp <service>-mcp
+   cp -r tracearr-mcp <service>-mcp
    rm -rf <service>-mcp/.git
    cd <service>-mcp
    git init -b main
    ```
 2. Follow [`new.md`](new.md) end-to-end: build, first release (bump, tag, push),
    then self-register in `README.md`.
-3. Use `dashy-mcp/` as the template — mirror its Makefile, `release.yml` workflow,
+3. Use `tracearr-mcp/` as the template — mirror its Makefile, `release.yml` workflow,
    test patterns, and AGENTS.md conventions. Keep the server single-file unless
    it clearly outgrows that.
 

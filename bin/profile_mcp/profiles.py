@@ -170,3 +170,17 @@ MODEL_SETS: dict[str, dict[str, str]] = {
         "heavy": "deepseek/deepseek-v4-pro",
     },
 }
+
+# Which model sets each host may use. The Proxmox box has no paid account, so
+# it only offers the free tier; the desktop host can use every set. Hosts not
+# listed fall back to all sets.
+HOST_MODEL_SETS: dict[str, tuple[str, ...]] = {
+    "desktop": ("free", "go", "deepseek"),
+    "proxmox": ("free",),
+}
+
+
+def model_sets_for_host(host: str) -> dict[str, dict[str, str]]:
+    """Return the model sets offered on the given host."""
+    names = HOST_MODEL_SETS.get(host, tuple(MODEL_SETS))
+    return {name: MODEL_SETS[name] for name in names if name in MODEL_SETS}

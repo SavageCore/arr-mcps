@@ -17,6 +17,7 @@ from profile_mcp.profiles import (
     MODEL_SETS,
     PROFILES,
     load_custom_profiles,
+    model_sets_for_host,
     profile_keys,
     save_custom_profile,
 )
@@ -105,13 +106,15 @@ def print_header():
     console.print()
 
 
-def pick_set() -> str:
+def pick_set(sets: dict[str, dict[str, str]]) -> str:
     """Interactive model-set picker: ↑/↓ move · enter select · 1-9 jump · q quit.
 
-    Returns the chosen model set name (free / go / deepseek). Quitting raises
-    SystemExit without writing anything.
+    Returns the chosen model set name from `sets`. Quitting raises SystemExit
+    without writing anything.
     """
-    names = list(MODEL_SETS)
+    names = list(sets)
+    if len(names) == 1:
+        return names[0]
     cursor = 0
     console.clear()
     while True:
@@ -120,14 +123,14 @@ def pick_set() -> str:
 
         for i, name in enumerate(names):
             highlight = i == cursor
-            s = MODEL_SETS[name]
+            s = sets[name]
             line = Text()
             line.append(f"  {'▶' if highlight else ' '} ", style="bold cyan" if highlight else "dim")
             line.append(name, style="bold cyan" if highlight else "bold")
             line.append(f"  {s['desc']}", style="" if highlight else "dim")
             console.print(line)
 
-        s = MODEL_SETS[names[cursor]]
+        s = sets[names[cursor]]
         console.print()
         body = (
             f"  [bold]plan[/bold]   {s['plan']}\n"
@@ -185,7 +188,7 @@ def pick_profile(host: str, available: list[str]) -> tuple[str, list[str]]:
             marker = "▶" if highlight else " "
             line = Text()
             line.append(f"  {marker} ", style="bold cyan" if highlight else "dim")
-            line.append(name, style="bold cyan" if highlight else "bold")
+            line.append(_display_name(name), style="bold cyan" if highlight else "bold")
             if tag:
                 line.append(f" [{tag}]", style="magenta")
             line.append(f"  {desc}", style="" if highlight else "dim")
@@ -197,16 +200,16 @@ def pick_profile(host: str, available: list[str]) -> tuple[str, list[str]]:
         name, _tag, _desc, keys = options[cursor]
         console.print()
         if name == "custom":
-            title = "[bold cyan]custom[/bold cyan] — manual set"
+            title = "[bold cyan]Custom[/bold cyan] — manual set"
             body = "[dim]Select exactly the servers you want, then save or use them as-is.[/dim]"
         elif name == "none":
-            title = "[bold cyan]none[/bold cyan] — no MCP servers"
+            title = "[bold cyan]None[/bold cyan] — no MCP servers"
             body = "[dim]Opens opencode with every MCP server disabled.[/dim]"
         elif not keys:
-            title = f"[bold cyan]{name}[/bold cyan]"
+            title = f"[bold cyan]{_display_name(name)}[/bold cyan]"
             body = "[dim]None of this profile's servers are present on this host.[/dim]"
         else:
-            title = f"[bold cyan]{name}[/bold cyan]"
+            title = f"[bold cyan]{_display_name(name)}[/bold cyan]"
             body = "\n".join(f"  [green]•[/green] {k}" for k in keys)
         console.print(Panel(body, title=title, border_style="cyan", expand=False))
         console.print()
@@ -245,6 +248,11 @@ def pick_profile(host: str, available: list[str]) -> tuple[str, list[str]]:
             idx = int(key) - 1
             if idx < len(options):
                 cursor = idx
+
+
+def _display_name(name: str) -> str:
+    """Capitalize only the first character, leaving the rest untouched."""
+    return name[:1].upper() + name[1:]
 
 
 def _profile_options(host: str, available: list[str]) -> list[tuple[str, str, str, list[str]]]:
@@ -478,7 +486,7 @@ def main():
         console.print("profile-mcp - choose which MCP servers to load")
         console.print("  profile-mcp                       Interactive profile + model set picker")
         console.print("  profile-mcp --non-interactive deploy   Named profiles: deploy | media | diagnostics | none")
-        console.print("  profile-mcp --set go              Model set: free | go | deepseek")
+        console.print("  profile-mcp --set go              Model set: free | go | deepseek (per-host: proxmox is free only)")
         console.print("  profile-mcp --host proxmox        Target the proxmox host's server keys")
         console.print("  profile-mcp --dir /path           Write the config elsewhere")
         return 0
@@ -514,23 +522,31 @@ def main():
 
     available = sorted(all_keys)
 
-    set_name = args.set or (pick_set() if not args.non_interactive else "go")
+    host_sets = model_sets_for_host(host)
+    default_set = next(iter(host_sets))
+    if args.set and args.set not in host_sets:
+        console.print(f"[yellow]'{args.set}' is not available on the {host} host — using '{default_set}'.[/yellow]")
+    set_name = args.set if args.set in host_sets else (
+        default_set if (args.non_interactive or len(host_sets) == 1) else pick_set(host_sets)
+    )
 
     if args.non_interactive:
-        if args.non_interactive == "none":
+        non_int = args.non_interactive
+        lower = non_int.lower()
+        if lower == "none":
             label, enabled = "none", []
-        elif args.non_interactive in load_custom_profiles():
-            saved = load_custom_profiles()[args.non_interactive]
-            label = args.non_interactive
-            enabled = [k for k in saved if k in all_keys]
+        elif lower in {k.lower() for k in load_custom_profiles()}:
+            saved = next(k for k in load_custom_profiles() if k.lower() == lower)
+            label = saved
+            enabled = [k for k in load_custom_profiles()[saved] if k in all_keys]
         else:
             for profile in PROFILES:
-                if profile.name == args.non_interactive:
+                if profile.name == lower:
                     label = profile.name
                     enabled = [k for k in profile_keys(profile, host) if k in all_keys]
                     break
             else:
-                console.print(f"[red]Unknown profile '{args.non_interactive}'. "
+                console.print(f"[red]Unknown profile '{non_int}'. "
                               f"Choices: {', '.join(p.name for p in PROFILES)}, none, or a saved profile[/red]")
                 return 1
     else:

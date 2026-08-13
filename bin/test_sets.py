@@ -10,6 +10,7 @@ from profile_mcp.profiles import (
     Profile,
     PROFILES,
     load_custom_profiles,
+    model_sets_for_host,
     profile_keys,
     save_custom_profile,
 )
@@ -31,6 +32,12 @@ assert set(config["agent"]) == set(ROLES)
 # none profile: every server explicitly disabled, nothing enabled
 config = build_config({"a": {}, "b": {}}, [], "go")
 assert all(v["enabled"] is False for v in config["mcp"].values())
+
+# per-host model sets: proxmox has no paid account -> free only
+proxmox_sets = model_sets_for_host("proxmox")
+assert set(proxmox_sets) == {"free"}, proxmox_sets
+assert set(model_sets_for_host("desktop")) == set(MODEL_SETS)
+assert set(model_sets_for_host("unknown-host")) == set(MODEL_SETS)
 
 # custom profiles: persist, reload, overwrite
 from profile_mcp import profiles as pmod

@@ -153,9 +153,8 @@ def save_custom_profile(name: str, keys: list[str]) -> None:
 MODEL_SETS: dict[str, dict[str, str]] = {
     "free": {
         "desc": "Zen free tier — no spend",
-        "plan": "opencode/glm-5-free",
+        "plan": "opencode/nemotron-3-ultra-free",
         "build": "opencode/deepseek-v4-flash-free",
-        "heavy": "opencode/nemotron-3-ultra-free",
     },
     "go": {
         "desc": "opencode Go subscription",

@@ -286,6 +286,7 @@ def _profile_options(host: str, available: list[str]) -> list[tuple[str, str, st
     none actions. 'tag' is 'saved' for saved custom profiles, else ''.
     """
     options: list[tuple[str, str, str, list[str]]] = []
+    options.append(("none", "", "Load with no MCP servers at all", []))
     for p in PROFILES:
         options.append(
             (p.name, "", p.description, [k for k in profile_keys(p, host) if k in available])
@@ -295,7 +296,6 @@ def _profile_options(host: str, available: list[str]) -> list[tuple[str, str, st
             (name, "saved", "Saved custom profile", [k for k in keys if k in available])
         )
     options.append(("custom", "", "Pick exactly the servers you want", []))
-    options.append(("none", "", "Load with no MCP servers at all", []))
     return options
 
 

@@ -137,9 +137,12 @@ def pick_set(sets: dict[str, dict[str, str]]) -> str:
         console.print()
         body = (
             f"  [bold]plan[/bold]   {s['plan']}\n"
-            f"  [bold]build[/bold]  {s['build']}\n"
-            f"  [bold]heavy[/bold]  {s['heavy']}"
+            f"  [bold]build[/bold]  {s['build']}"
         )
+        if "heavy" in s:
+            body += f"\n  [bold]heavy[/bold]  {s['heavy']}"
+        else:
+            body += "\n  [bold]heavy[/bold]  [dim]disabled[/dim]"
         console.print(
             Panel(
                 body,
@@ -468,7 +471,11 @@ def build_config(all_keys: dict[str, dict], enabled: list[str], set_name: str) -
     for key, server in all_keys.items():
         mcp[key] = {**server, "enabled": key in enabled_set}
     models = MODEL_SETS[set_name]
-    agent = {role: {"model": models[role]} for role in ("plan", "build", "heavy")}
+    agent = {role: {"model": models[role]} for role in models if role != "desc"}
+    if "heavy" not in models:
+        # Sets without a heavy key disable the heavy agent rather than letting
+        # it fall back to an expensive model from the global config.
+        agent["heavy"] = {"disable": True}
     return {"$schema": "https://opencode.ai/config.json", "mcp": mcp, "agent": agent}
 
 
@@ -494,7 +501,7 @@ def main():
     parser.add_argument("--non-interactive", metavar="PROFILE", default=None,
                         help="Skip prompts; use a named profile (deploy|media|diagnostics|none|saved)")
     parser.add_argument("--set", choices=list(MODEL_SETS), default=None,
-                        help="Model set for plan/build/heavy (free|go|deepseek); prompts if omitted")
+                        help="Model set for plan/build/heavy (free|go|go-cheap|deepseek); prompts if omitted")
     parser.add_argument("-v", "--version", action="store_true", help="Show version")
     parser.add_argument("-h", "--help", action="store_true", help="Show help")
     args = parser.parse_args()
@@ -507,7 +514,7 @@ def main():
         console.print("profile-mcp - choose which MCP servers to load")
         console.print("  profile-mcp                       Interactive profile + model set picker")
         console.print("  profile-mcp --non-interactive deploy   Named profiles: deploy | media | diagnostics | none")
-        console.print("  profile-mcp --set go              Model set: free | go | deepseek (per-host: proxmox is free only)")
+        console.print("  profile-mcp --set go              Model set: free | go | go-cheap | deepseek (per-host: proxmox is free only)")
         console.print("  profile-mcp --host proxmox        Target the proxmox host's server keys")
         console.print("  profile-mcp --dir /path           Write the config elsewhere")
         return 0

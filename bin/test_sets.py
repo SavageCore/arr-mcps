@@ -15,19 +15,29 @@ from profile_mcp.profiles import (
     save_custom_profile,
 )
 
-ROLES = ("plan", "build", "heavy")
+REQUIRED_ROLES = ("plan", "build")
 
 for name, s in MODEL_SETS.items():
-    for role in ROLES:
+    for role in REQUIRED_ROLES:
         assert role in s, f"{name} missing role {role}"
         provider, _, model = s[role].partition("/")
         assert provider and model, f"{name}.{role} = {s[role]!r} is not 'provider/model'"
+    if "heavy" in s:
+        provider, _, model = s["heavy"].partition("/")
+        assert provider and model, f"{name}.heavy = {s['heavy']!r} is not 'provider/model'"
 
 config = build_config({}, [], "go")
 assert config["agent"]["plan"]["model"] == "opencode-go/glm-5.2"
 assert config["agent"]["build"]["model"] == "opencode-go/deepseek-v4-flash"
 assert config["agent"]["heavy"]["model"] == "opencode-go/gpt-5.6-luna"
-assert set(config["agent"]) == set(ROLES)
+assert set(config["agent"]) == set(REQUIRED_ROLES + ("heavy",))
+
+# go-cheap: flash for plan and build, heavy agent disabled rather than pinned
+cheap = build_config({}, [], "go-cheap")
+assert cheap["agent"]["plan"]["model"] == "opencode-go/deepseek-v4-flash"
+assert cheap["agent"]["build"]["model"] == "opencode-go/deepseek-v4-flash"
+assert cheap["agent"]["heavy"] == {"disable": True}
+assert set(cheap["agent"]) == set(REQUIRED_ROLES + ("heavy",))
 
 # none profile: every server explicitly disabled, nothing enabled
 config = build_config({"a": {}, "b": {}}, [], "go")

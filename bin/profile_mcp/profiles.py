@@ -163,6 +163,15 @@ MODEL_SETS: dict[str, dict[str, str]] = {
         "build": "opencode-go/deepseek-v4-flash",
         "heavy": "opencode-go/gpt-5.6-luna",
     },
+    # Cheap Go set: flash for both plan and build, and no heavy agent at all.
+    # Omitting the "heavy" key means the wizard disables the heavy agent for
+    # the session (see build_config in cli.py) instead of pinning an expensive
+    # model to it.
+    "go-cheap": {
+        "desc": "opencode Go subscription — flash plan & build, no heavy",
+        "plan": "opencode-go/deepseek-v4-flash",
+        "build": "opencode-go/deepseek-v4-flash",
+    },
     "deepseek": {
         "desc": "DeepSeek direct API",
         "plan": "deepseek/deepseek-v4-pro",
@@ -175,7 +184,7 @@ MODEL_SETS: dict[str, dict[str, str]] = {
 # it only offers the free tier; the desktop host can use every set. Hosts not
 # listed fall back to all sets.
 HOST_MODEL_SETS: dict[str, tuple[str, ...]] = {
-    "desktop": ("free", "go", "deepseek"),
+    "desktop": ("free", "go", "go-cheap", "deepseek"),
     "proxmox": ("free",),
 }
 

@@ -11,3 +11,7 @@ dependencies = ["rich>=13.0.0"]
 
 [project.scripts]
 new-mcp = "new_mcp.cli:main"
+profile-mcp = "profile_mcp.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["new_mcp", "profile_mcp"]

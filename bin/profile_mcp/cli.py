@@ -118,14 +118,17 @@ def pick_set(sets: dict[str, dict[str, str]]) -> str:
     cursor = 0
     console.clear()
     while True:
-        console.print("[bold cyan]Choose a model set[/bold cyan]  [dim](↑/↓ move · enter select · 1-9 jump · q quit)[/dim]")
+        console.print("[bold cyan]Choose a model set[/bold cyan]  [dim](↑/↓ move · number selects · enter for highlighted · q quit)[/dim]")
         console.print()
 
         for i, name in enumerate(names):
             highlight = i == cursor
             s = sets[name]
+            num = f"{i + 1:>{len(str(len(names)))}}."
             line = Text()
             line.append(f"  {'▶' if highlight else ' '} ", style="bold cyan" if highlight else "dim")
+            line.append(num, style="bold cyan" if highlight else "dim")
+            line.append(" ")
             line.append(name, style="bold cyan" if highlight else "bold")
             line.append(f"  {s['desc']}", style="" if highlight else "dim")
             console.print(line)
@@ -162,10 +165,10 @@ def pick_set(sets: dict[str, dict[str, str]]) -> str:
         elif key in ("q", "Q", "esc"):
             console.print("[dim]Quit — nothing written.[/dim]")
             raise SystemExit(0)
-        elif key in "123456789":
-            idx = int(key) - 1
+        elif key in "1234567890":
+            idx = (int(key) - 1) if key != "0" else 9
             if idx < len(names):
-                cursor = idx
+                return names[idx]
 
 
 def pick_profile(host: str, available: list[str]) -> tuple[str, list[str]]:
@@ -180,14 +183,17 @@ def pick_profile(host: str, available: list[str]) -> tuple[str, list[str]]:
     while True:
         options = _profile_options(host, available)
 
-        console.print("[bold cyan]Choose a profile[/bold cyan]  [dim](↑/↓ move · enter select · n none · c custom · q quit)[/dim]")
+        console.print("[bold cyan]Choose a profile[/bold cyan]  [dim](↑/↓ move · number selects · enter for highlighted · n none · c custom · q quit)[/dim]")
         console.print()
 
         for i, (name, tag, desc, keys) in enumerate(options):
             highlight = i == cursor
             marker = "▶" if highlight else " "
+            num = f"{i + 1:>{len(str(len(options)))}}."
             line = Text()
             line.append(f"  {marker} ", style="bold cyan" if highlight else "dim")
+            line.append(num, style="bold cyan" if highlight else "dim")
+            line.append(" ")
             line.append(_display_name(name), style="bold cyan" if highlight else "bold")
             if tag:
                 line.append(f" [{tag}]", style="magenta")
@@ -225,15 +231,9 @@ def pick_profile(host: str, available: list[str]) -> tuple[str, list[str]]:
         elif key == "down":
             cursor = (cursor + 1) % len(options)
         elif key == "enter":
-            name, _tag, _desc, keys = options[cursor]
-            if name == "none":
-                return "none", []
-            if name == "custom":
-                keys, edited = choose_custom(available)
-                if keys is None:
-                    continue  # backed out of the checklist — redraw the list
-                return (edited or "custom"), keys
-            return name, keys
+            picked = _resolve_option(options, cursor, available)
+            if picked is not None:
+                return picked
         elif key in ("n", "N"):
             return "none", []
         elif key in ("c", "C"):
@@ -244,15 +244,36 @@ def pick_profile(host: str, available: list[str]) -> tuple[str, list[str]]:
         elif key in ("q", "Q", "esc"):
             console.print("[dim]Quit — nothing written.[/dim]")
             raise SystemExit(0)
-        elif key in "123456789":
-            idx = int(key) - 1
+        elif key in "1234567890":
+            idx = (int(key) - 1) if key != "0" else 9
             if idx < len(options):
-                cursor = idx
+                picked = _resolve_option(options, idx, available)
+                if picked is not None:
+                    return picked
 
 
 def _display_name(name: str) -> str:
     """Capitalize only the first character, leaving the rest untouched."""
     return name[:1].upper() + name[1:]
+
+
+def _resolve_option(
+    options: list[tuple[str, str, str, list[str]]], idx: int, available: list[str]
+) -> tuple[str, list[str]] | None:
+    """Resolve a picked profile row to (label, enabled_keys).
+
+    Returns None when the user backs out of the custom checklist, so the
+    profile list redraws.
+    """
+    name, _tag, _desc, keys = options[idx]
+    if name == "none":
+        return "none", []
+    if name == "custom":
+        keys, edited = choose_custom(available)
+        if keys is None:
+            return None
+        return (edited or "custom"), keys
+    return name, keys
 
 
 def _profile_options(host: str, available: list[str]) -> list[tuple[str, str, str, list[str]]]:

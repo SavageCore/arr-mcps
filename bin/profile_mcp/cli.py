@@ -590,19 +590,16 @@ def main():
 
     out_file = write_config(config, out_dir)
 
-    console.print()
-    console.print(f"[bold green]✓ Wrote {out_file}[/bold green]  [dim]({set_name} · {len(enabled)} servers enabled)[/dim]")
-    console.print()
-
     if sys.stdin.isatty():
         import os
         import subprocess
 
-        console.print("[cyan]opencode (with this MCP profile)...[/cyan]")
         subprocess.run(
             ["opencode"],
             env={**os.environ, "OPENCODE_CONFIG_CONTENT": json.dumps(config)},
         )
+    else:
+        console.print(f"[bold green]✓ Wrote {out_file}[/bold green]  [dim]({set_name} · {len(enabled)} servers enabled)[/dim]")
 
     return 0
 

@@ -12,7 +12,14 @@ key per host.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
+from pathlib import Path
+
+# Persistence for user-saved custom profiles. Lives next to the wizard's other
+# config so it survives reinstalls and is shared across hosts.
+CUSTOM_PROFILES_DIR = Path.home() / ".config" / "profile-mcp"
+CUSTOM_PROFILES_FILE = CUSTOM_PROFILES_DIR / "profiles.json"
 
 # Role -> (desktop key, proxmox key). Only roles whose key differs across hosts
 # need an entry; the same key on both hosts is omitted here.
@@ -49,6 +56,9 @@ class Profile:
     name: str
     description: str
     roles: tuple[str, ...]
+    # When set, the profile stores concrete config keys verbatim (a saved
+    # custom profile) instead of roles that resolve per host.
+    keys: tuple[str, ...] | None = None
 
 
 PROFILES: list[Profile] = [
@@ -100,9 +110,63 @@ def role_key_map(host: str) -> dict[str, str]:
 
 def profile_keys(profile: Profile, host: str) -> list[str]:
     """Resolve a profile's roles to concrete config keys present on the host."""
+    if profile.keys is not None:
+        return list(profile.keys)
     keys = []
     for role in profile.roles:
         key = resolve_key(role, host)
         if key:
             keys.append(key)
     return keys
+
+
+BUILTIN_NAMES = frozenset(p.name for p in PROFILES)
+
+
+def load_custom_profiles() -> dict[str, list[str]]:
+    """Return {name: [server keys, ...]} for user-saved custom profiles."""
+    try:
+        data = json.loads(CUSTOM_PROFILES_FILE.read_text())
+    except (OSError, json.JSONDecodeError):
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    return {
+        name: [k for k in keys if isinstance(k, str)]
+        for name, keys in data.items()
+        if isinstance(name, str) and isinstance(keys, list)
+    }
+
+
+def save_custom_profile(name: str, keys: list[str]) -> None:
+    """Persist a custom profile; overwrites any existing profile with the name."""
+    profiles = load_custom_profiles()
+    profiles[name] = keys
+    CUSTOM_PROFILES_DIR.mkdir(parents=True, exist_ok=True)
+    CUSTOM_PROFILES_FILE.write_text(json.dumps(profiles, indent=2) + "\n")
+
+
+# Provider sets: which models back the plan / build / heavy agents for a
+# session. Applied as an `agent` block in the OPENCODE_CONFIG_CONTENT
+# override alongside the MCP profile, so switching provider needs no config
+# rewrite on disk.
+MODEL_SETS: dict[str, dict[str, str]] = {
+    "free": {
+        "desc": "Zen free tier — no spend",
+        "plan": "opencode/glm-5-free",
+        "build": "opencode/deepseek-v4-flash-free",
+        "heavy": "opencode/minimax-m3-free",
+    },
+    "go": {
+        "desc": "opencode Go subscription",
+        "plan": "opencode-go/glm-5.2",
+        "build": "opencode-go/deepseek-v4-flash",
+        "heavy": "opencode-go/gpt-5.6-luna",
+    },
+    "deepseek": {
+        "desc": "DeepSeek direct API",
+        "plan": "deepseek/deepseek-v4-pro",
+        "build": "deepseek/deepseek-v4-flash",
+        "heavy": "deepseek/deepseek-v4-pro",
+    },
+}

@@ -3,17 +3,23 @@
 import argparse
 import json
 import sys
-from datetime import datetime
+import time
 from pathlib import Path
 
 from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Prompt
-from rich.table import Table
 from rich.text import Text
 
 from profile_mcp import __version__
-from profile_mcp.profiles import PROFILES, role_key_map, profile_keys
+from profile_mcp.profiles import (
+    BUILTIN_NAMES,
+    MODEL_SETS,
+    PROFILES,
+    load_custom_profiles,
+    profile_keys,
+    save_custom_profile,
+)
 
 console = Console()
 
@@ -91,90 +97,350 @@ def print_header():
     info = (
         "Generates a project-scoped opencode config that loads only the "
         "MCP servers you need for the task at hand.\n\n"
-        "[dim]→ Pick a named profile (deploy / media / diagnostics)[/dim]\n"
-        "[dim]→ Or build a custom set of servers[/dim]\n"
+        "[dim]→ Pick a named profile (deploy / media / diagnostics / saved)[/dim]\n"
+        "[dim]→ Build a custom set, or 'none' to load with no MCP servers[/dim]\n"
         "[dim]→ A <profile>/opencode.json is written; launch opencode there[/dim]"
     )
     console.print(Panel(info, border_style="cyan"))
     console.print()
 
 
-def pick_profile(host: str, available: list[str]) -> tuple[str, list[str]]:
-    """Return (label, enabled_server_keys) for a named profile or custom set."""
-    table = Table(title="Profiles", show_header=True)
-    table.add_column("#", style="dim")
-    table.add_column("Name", style="bold")
-    table.add_column("Description")
-    table.add_column("Servers", style="dim")
+def pick_set() -> str:
+    """Interactive model-set picker: ↑/↓ move · enter select · 1-9 jump · q quit.
 
-    for i, p in enumerate(PROFILES, 1):
-        table.add_row(str(i), p.name, p.description, ", ".join(p.roles))
-    table.add_row("c", "custom", "Pick exactly the servers you want", "manual")
-
-    console.print(table)
-    console.print()
-
-    choice = Prompt.ask(
-        "[bold cyan]Choose a profile[/bold cyan]",
-        default="1",
-        show_default=False,
-    ).strip().lower()
-
-    if choice == "c":
-        return "custom", choose_custom(available)
-
-    try:
-        profile = PROFILES[int(choice) - 1]
-    except (ValueError, IndexError):
-        console.print("[red]Invalid choice, using 'deploy'.[/red]")
-        profile = PROFILES[0]
-    enabled = [k for k in profile_keys(profile, host) if k in available]
-    return profile.name, enabled
-
-
-def choose_custom(available: list[str]) -> list[str]:
-    """Multi-select (comma-separated toggling) of available server keys."""
-    console.print("[bold]Available servers[/bold]")
-    for i, key in enumerate(available, 1):
-        console.print(f"  [cyan]{i:>2}[/cyan]  {key}")
-    console.print()
-    selected: set[str] = set()
+    Returns the chosen model set name (free / go / deepseek). Quitting raises
+    SystemExit without writing anything.
+    """
+    names = list(MODEL_SETS)
+    cursor = 0
+    console.clear()
     while True:
-        toggles = Prompt.ask(
-            "[cyan]Enter numbers to toggle (blank to finish)[/cyan]",
-            default="",
-            show_default=False,
-        ).strip()
-        if not toggles:
-            break
-        for tok in toggles.replace(",", " ").split():
-            try:
-                key = available[int(tok) - 1]
-            except (ValueError, IndexError):
-                console.print(f"[yellow]Ignoring invalid: {tok}[/yellow]")
-                continue
-            if key in selected:
-                selected.discard(key)
-                console.print(f"  [dim]- {key}[/dim]")
+        console.print("[bold cyan]Choose a model set[/bold cyan]  [dim](↑/↓ move · enter select · 1-9 jump · q quit)[/dim]")
+        console.print()
+
+        for i, name in enumerate(names):
+            highlight = i == cursor
+            s = MODEL_SETS[name]
+            line = Text()
+            line.append(f"  {'▶' if highlight else ' '} ", style="bold cyan" if highlight else "dim")
+            line.append(name, style="bold cyan" if highlight else "bold")
+            line.append(f"  {s['desc']}", style="" if highlight else "dim")
+            console.print(line)
+
+        s = MODEL_SETS[names[cursor]]
+        console.print()
+        body = (
+            f"  [bold]plan[/bold]   {s['plan']}\n"
+            f"  [bold]build[/bold]  {s['build']}\n"
+            f"  [bold]heavy[/bold]  {s['heavy']}"
+        )
+        console.print(
+            Panel(
+                body,
+                title=f"[bold cyan]{names[cursor]}[/bold cyan] — {s['desc']}",
+                border_style="cyan",
+                expand=False,
+            )
+        )
+        console.print()
+
+        try:
+            key = _read_key()
+        except KeyboardInterrupt:
+            raise SystemExit(130)
+        console.clear()
+
+        if key == "up":
+            cursor = (cursor - 1) % len(names)
+        elif key == "down":
+            cursor = (cursor + 1) % len(names)
+        elif key == "enter":
+            return names[cursor]
+        elif key in ("q", "Q", "esc"):
+            console.print("[dim]Quit — nothing written.[/dim]")
+            raise SystemExit(0)
+        elif key in "123456789":
+            idx = int(key) - 1
+            if idx < len(names):
+                cursor = idx
+
+
+def pick_profile(host: str, available: list[str]) -> tuple[str, list[str]]:
+    """Interactive profile picker: ↑/↓ move · enter select · n none · c custom · q quit.
+
+    Returns (label, enabled_server_keys). 'label' is the profile name for
+    built-in and saved profiles, 'custom' for a manual set, or 'none'.
+    Quitting raises SystemExit without writing anything.
+    """
+    cursor = 0
+    console.clear()
+    while True:
+        options = _profile_options(host, available)
+
+        console.print("[bold cyan]Choose a profile[/bold cyan]  [dim](↑/↓ move · enter select · n none · c custom · q quit)[/dim]")
+        console.print()
+
+        for i, (name, tag, desc, keys) in enumerate(options):
+            highlight = i == cursor
+            marker = "▶" if highlight else " "
+            line = Text()
+            line.append(f"  {marker} ", style="bold cyan" if highlight else "dim")
+            line.append(name, style="bold cyan" if highlight else "bold")
+            if tag:
+                line.append(f" [{tag}]", style="magenta")
+            line.append(f"  {desc}", style="" if highlight else "dim")
+            if name not in ("custom", "none"):
+                n = len(keys)
+                line.append(f"  ({n} server{'s' if n != 1 else ''})", style="dim")
+            console.print(line)
+
+        name, _tag, _desc, keys = options[cursor]
+        console.print()
+        if name == "custom":
+            title = "[bold cyan]custom[/bold cyan] — manual set"
+            body = "[dim]Select exactly the servers you want, then save or use them as-is.[/dim]"
+        elif name == "none":
+            title = "[bold cyan]none[/bold cyan] — no MCP servers"
+            body = "[dim]Opens opencode with every MCP server disabled.[/dim]"
+        elif not keys:
+            title = f"[bold cyan]{name}[/bold cyan]"
+            body = "[dim]None of this profile's servers are present on this host.[/dim]"
+        else:
+            title = f"[bold cyan]{name}[/bold cyan]"
+            body = "\n".join(f"  [green]•[/green] {k}" for k in keys)
+        console.print(Panel(body, title=title, border_style="cyan", expand=False))
+        console.print()
+
+        try:
+            key = _read_key()
+        except KeyboardInterrupt:
+            raise SystemExit(130)
+        console.clear()
+
+        if key == "up":
+            cursor = (cursor - 1) % len(options)
+        elif key == "down":
+            cursor = (cursor + 1) % len(options)
+        elif key == "enter":
+            name, _tag, _desc, keys = options[cursor]
+            if name == "none":
+                return "none", []
+            if name == "custom":
+                keys, edited = choose_custom(available)
+                if keys is None:
+                    continue  # backed out of the checklist — redraw the list
+                return (edited or "custom"), keys
+            return name, keys
+        elif key in ("n", "N"):
+            return "none", []
+        elif key in ("c", "C"):
+            keys, edited = choose_custom(available)
+            if keys is None:
+                continue  # backed out of the checklist — redraw the list
+            return (edited or "custom"), keys
+        elif key in ("q", "Q", "esc"):
+            console.print("[dim]Quit — nothing written.[/dim]")
+            raise SystemExit(0)
+        elif key in "123456789":
+            idx = int(key) - 1
+            if idx < len(options):
+                cursor = idx
+
+
+def _profile_options(host: str, available: list[str]) -> list[tuple[str, str, str, list[str]]]:
+    """Return (name, tag, description, enabled_keys) for every selectable option.
+
+    Built-in profiles first, then saved custom profiles, then the custom and
+    none actions. 'tag' is 'saved' for saved custom profiles, else ''.
+    """
+    options: list[tuple[str, str, str, list[str]]] = []
+    for p in PROFILES:
+        options.append(
+            (p.name, "", p.description, [k for k in profile_keys(p, host) if k in available])
+        )
+    for name, keys in sorted(load_custom_profiles().items()):
+        options.append(
+            (name, "saved", "Saved custom profile", [k for k in keys if k in available])
+        )
+    options.append(("custom", "", "Pick exactly the servers you want", []))
+    options.append(("none", "", "Load with no MCP servers at all", []))
+    return options
+
+
+def _read_key() -> str:
+    """Read a single keypress in raw mode.
+
+    Returns a normalized token: 'up'/'down'/'space'/'enter'/'esc', or the
+    literal character for anything else.
+    """
+    import sys as _sys
+    import termios
+    import tty
+
+    fd = _sys.stdin.fileno()
+    old = termios.tcgetattr(fd)
+    try:
+        tty.setraw(fd)
+        ch = _sys.stdin.read(1)
+        if ch == "\x1b":
+            seq = _sys.stdin.read(2)
+            if seq == "[A":
+                return "up"
+            if seq == "[B":
+                return "down"
+            if seq == "[C":
+                return "right"
+            if seq == "[D":
+                return "left"
+            return "esc"
+        if ch == " ":
+            return "space"
+        if ch in ("\r", "\n"):
+            return "enter"
+        if ch == "\x03":
+            raise KeyboardInterrupt
+        return ch
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old)
+
+
+def choose_custom(available: list[str], edit_name: str | None = None) -> tuple[list[str] | None, str | None]:
+    """Interactive checklist: ↑/↓ move · space toggle · e edit saved · s save · q back · enter done.
+
+    Returns (selected_keys, edit_name). selected_keys is None when the user
+    backs out (q) so the caller can return to the profile list.
+    """
+    header = "[bold]Available servers[/bold]  [dim](↑/↓ move · space toggle · e edit saved · s save · q back · enter done)[/dim]"
+    selected: set[str] = set()
+    cursor = 0
+    if edit_name:
+        selected = {k for k in load_custom_profiles().get(edit_name, []) if k in available}
+    console.clear()
+    while True:
+        console.print(header)
+        if edit_name:
+            console.print(f"[dim]Editing profile: [bold cyan]{edit_name}[/bold cyan][/dim]")
+            console.print()
+        for i, key in enumerate(available):
+            line = Text()
+            line.append("  ")
+            line.append("→" if i == cursor else " ",
+                        style="bold cyan" if i == cursor else "dim")
+            line.append(" ")
+            line.append("[x]" if key in selected else "[ ]",
+                        style="bold cyan" if i == cursor else "dim")
+            line.append("  ")
+            line.append(key, style="bold cyan" if i == cursor else "dim")
+            console.print(line)
+        console.print()
+        console.print("[dim]↑/↓ move · space toggle · e edit saved · s save · q back · enter done[/dim]", end="\r")
+
+        try:
+            key = _read_key()
+        except KeyboardInterrupt:
+            raise SystemExit(130)
+        console.clear()
+
+        if key == "up":
+            cursor = (cursor - 1) % len(available)
+        elif key == "down":
+            cursor = (cursor + 1) % len(available)
+        elif key == "space":
+            item = available[cursor]
+            if item in selected:
+                selected.discard(item)
             else:
-                selected.add(key)
-                console.print(f"  [green]+ {key}[/green]")
-    return sorted(selected)
+                selected.add(item)
+        elif key in ("e", "E"):
+            target = _pick_saved_profile()
+            if target:
+                edit_name = target
+                selected = {k for k in load_custom_profiles()[target] if k in available}
+        elif key == "q":
+            console.print("[dim]Back to profiles.[/dim]")
+            return None, None
+        elif key in ("s", "S"):
+            if not selected:
+                console.print("[yellow]Select at least one server before saving.[/yellow]")
+            elif edit_name:
+                save_custom_profile(edit_name, sorted(selected))
+                console.print(f"[green]✓ Updated profile '{edit_name}'.[/green]")
+            else:
+                _save_selection(sorted(selected))
+            time.sleep(0.9)
+        elif key == "enter":
+            break
+
+    console.print()
+    return sorted(selected), edit_name
 
 
-def build_config(all_keys: dict[str, dict], enabled: list[str]) -> dict:
+def _pick_saved_profile() -> str | None:
+    """Prompt for which saved profile to edit; returns its name or None."""
+    saved = load_custom_profiles()
+    if not saved:
+        console.print("[yellow]No saved profiles yet — toggle some servers and press 's' to create one.[/yellow]")
+        return None
+    names = sorted(saved)
+    console.print("[bold]Saved profiles:[/bold]")
+    for i, name in enumerate(names, 1):
+        servers = ", ".join(saved[name]) or "(none)"
+        console.print(f"  [cyan]{i}[/cyan]  {name}  [dim]({servers})[/dim]")
+    choice = Prompt.ask("[bold cyan]Edit which profile?[/bold cyan]", default="1").strip()
+    try:
+        return names[int(choice) - 1]
+    except (ValueError, IndexError):
+        console.print("[red]Invalid choice.[/red]")
+        return None
+
+
+def _save_selection(keys: list[str]) -> None:
+    """Prompt for a name and persist the current selection as a custom profile."""
+    if not keys:
+        console.print("[yellow]Select at least one server before saving.[/yellow]")
+        return
+
+    name = Prompt.ask("[bold cyan]Save selection as profile:[/bold cyan]").strip()
+    if not name:
+        console.print("[yellow]Not saved — name was empty.[/yellow]")
+        return
+    if name in BUILTIN_NAMES:
+        console.print(f"[yellow]'{name}' is a built-in profile name; choose another.[/yellow]")
+        return
+
+    existing = load_custom_profiles()
+    if name in existing:
+        ok = Prompt.ask(
+            f"[yellow]'{name}' already exists — overwrite?[/yellow]",
+            choices=["y", "n"],
+            default="n",
+        ).strip().lower()
+        if ok != "y":
+            console.print("[dim]Save cancelled.[/dim]")
+            return
+
+    save_custom_profile(name, keys)
+    console.print(f"[green]✓ Saved profile '{name}' — pick it from the profile list.[/green]")
+
+
+def build_config(all_keys: dict[str, dict], enabled: list[str], set_name: str) -> dict:
     """Carry every server's full definition, toggling `enabled` on each.
 
     The definitions must be included inline (not just `enabled` flags): the
     profile is injected via OPENCODE_CONFIG_CONTENT, and when opencode runs
     outside the config's home directory the server definitions aren't loaded
     from any project config — so they must travel with the override.
+
+    The agent block sets only `model` for plan/build/heavy, so they keep
+    inheriting opencode's built-in modes and permissions for those names.
     """
     enabled_set = set(enabled)
     mcp = {}
     for key, server in all_keys.items():
         mcp[key] = {**server, "enabled": key in enabled_set}
-    return {"$schema": "https://opencode.ai/config.json", "mcp": mcp}
+    models = MODEL_SETS[set_name]
+    agent = {role: {"model": models[role]} for role in ("plan", "build", "heavy")}
+    return {"$schema": "https://opencode.ai/config.json", "mcp": mcp, "agent": agent}
 
 
 def write_config(config: dict, out_dir: Path) -> Path:
@@ -197,20 +463,22 @@ def main():
     parser.add_argument("--dir", default=None,
                         help="Output directory for the generated config")
     parser.add_argument("--non-interactive", metavar="PROFILE", default=None,
-                        help="Skip prompts; use a named profile (deploy|media|diagnostics)")
+                        help="Skip prompts; use a named profile (deploy|media|diagnostics|none|saved)")
+    parser.add_argument("--set", choices=list(MODEL_SETS), default=None,
+                        help="Model set for plan/build/heavy (free|go|deepseek); prompts if omitted")
     parser.add_argument("-v", "--version", action="store_true", help="Show version")
     parser.add_argument("-h", "--help", action="store_true", help="Show help")
     args = parser.parse_args()
 
-    global _HOST
     if args.version:
         console.print(f"profile-mcp v{__version__}")
         return 0
 
     if args.help:
         console.print("profile-mcp - choose which MCP servers to load")
-        console.print("  profile-mcp                       Interactive profile picker")
-        console.print("  profile-mcp --non-interactive deploy   Generate the 'deploy' profile")
+        console.print("  profile-mcp                       Interactive profile + model set picker")
+        console.print("  profile-mcp --non-interactive deploy   Named profiles: deploy | media | diagnostics | none")
+        console.print("  profile-mcp --set go              Model set: free | go | deepseek")
         console.print("  profile-mcp --host proxmox        Target the proxmox host's server keys")
         console.print("  profile-mcp --dir /path           Write the config elsewhere")
         return 0
@@ -244,18 +512,27 @@ def main():
     console.print(f"[dim]Global: {global_path}  ·  host: {host}  ·  {len(all_keys)} servers[/dim]")
     console.print()
 
-    available = list(all_keys)
+    available = sorted(all_keys)
+
+    set_name = args.set or (pick_set() if not args.non_interactive else "go")
 
     if args.non_interactive:
-        for profile in PROFILES:
-            if profile.name == args.non_interactive:
-                label = profile.name
-                enabled = [k for k in profile_keys(profile, host) if k in all_keys]
-                break
+        if args.non_interactive == "none":
+            label, enabled = "none", []
+        elif args.non_interactive in load_custom_profiles():
+            saved = load_custom_profiles()[args.non_interactive]
+            label = args.non_interactive
+            enabled = [k for k in saved if k in all_keys]
         else:
-            console.print(f"[red]Unknown profile '{args.non_interactive}'. "
-                          f"Choices: {', '.join(p.name for p in PROFILES)}[/red]")
-            return 1
+            for profile in PROFILES:
+                if profile.name == args.non_interactive:
+                    label = profile.name
+                    enabled = [k for k in profile_keys(profile, host) if k in all_keys]
+                    break
+            else:
+                console.print(f"[red]Unknown profile '{args.non_interactive}'. "
+                              f"Choices: {', '.join(p.name for p in PROFILES)}, none, or a saved profile[/red]")
+                return 1
     else:
         label, enabled = pick_profile(host, available)
 
@@ -263,7 +540,7 @@ def main():
     if missing:
         console.print(f"[yellow]Note: not present on this host, skipped: {', '.join(missing)}[/yellow]")
 
-    config = build_config(all_keys, enabled)
+    config = build_config(all_keys, enabled, set_name)
 
     # Output dir
     if args.dir:
@@ -279,6 +556,7 @@ def main():
     enabled_list = "\n".join(f"  • {k}" for k in enabled) or "  (none)"
     console.print()
     console.print(f"[bold green]✓ Wrote {out_file}[/bold green]")
+    console.print(f"[bold]Model set:[/bold] {set_name}  ({MODEL_SETS[set_name]['desc']})")
     console.print(f"[bold]Enabled ({len(enabled)}):[/bold]\n{enabled_list}")
     console.print(f"[dim]All other servers are set to enabled:false.[/dim]")
     console.print()

@@ -590,20 +590,10 @@ def main():
 
     out_file = write_config(config, out_dir)
 
-    enabled_list = "\n".join(f"  • {k}" for k in enabled) or "  (none)"
     console.print()
-    console.print(f"[bold green]✓ Wrote {out_file}[/bold green]")
-    console.print(f"[bold]Model set:[/bold] {set_name}  ({MODEL_SETS[set_name]['desc']})")
-    console.print(f"[bold]Enabled ({len(enabled)}):[/bold]\n{enabled_list}")
-    console.print(f"[dim]All other servers are set to enabled:false.[/dim]")
+    console.print(f"[bold green]✓ Wrote {out_file}[/bold green]  [dim]({set_name} · {len(enabled)} servers enabled)[/dim]")
     console.print()
-    console.print("[bold]This applies regardless of where you run opencode[/bold]")
-    console.print("[dim](OPENCODE_CONFIG_CONTENT overrides the project config's MCP servers)[/dim]")
-    console.print()
-    console.print("[bold]Launch from anywhere:[/bold]  [cyan]opencode[/cyan]  (or run this wizard interactively and it launches for you)")
-    console.print("[dim](quit and restart opencode if it is already running)[/dim]")
 
-    console.print()
     if sys.stdin.isatty():
         import os
         import subprocess

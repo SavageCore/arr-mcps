@@ -321,13 +321,62 @@ def release_to_github(service: str, repo: str, mcp_dir: Path) -> bool:
 
 
 def register_in_readme(service: str, mcp_dir: Path, repo_path: Path) -> bool:
-    """Register the new MCP in README.md."""
+    """Register the new MCP in README.md, committing to main only."""
     console.print()
     console.print(f"[bold cyan]Step 6: Register in README.md[/bold cyan]")
     console.print()
 
     readme = repo_path / "README.md"
 
+    # Masterlist changes always land on main, never on a feature branch. If we're
+    # on anything else, stash all local changes, switch to main (pulling latest),
+    # and restore the branch afterwards. Everything below runs on main.
+    current_branch = subprocess.run(
+        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+        cwd=str(repo_path),
+        capture_output=True,
+        text=True
+    ).stdout.strip() or "main"
+    switched = current_branch != "main"
+    stashed = False
+    if switched:
+        with console.status("[bold]Switching to main...[/bold]"):
+            stash = subprocess.run(
+                ["git", "stash", "push", "-u", "-m", "new-mcp: masterlist"],
+                cwd=str(repo_path),
+                capture_output=True,
+                text=True
+            )
+            stashed = stash.returncode == 0
+            subprocess.run(
+                ["git", "checkout", "main"],
+                cwd=str(repo_path),
+                capture_output=True
+            )
+            subprocess.run(
+                ["git", "pull", "--ff-only", "origin", "main"],
+                cwd=str(repo_path),
+                capture_output=True
+            )
+
+    try:
+        return _register_in_readme_on_main(service, mcp_dir, repo_path, readme)
+    finally:
+        if switched:
+            subprocess.run(
+                ["git", "checkout", current_branch],
+                cwd=str(repo_path),
+                capture_output=True
+            )
+            if stashed:
+                subprocess.run(
+                    ["git", "stash", "pop"],
+                    cwd=str(repo_path),
+                    capture_output=True
+                )
+
+
+def _register_in_readme_on_main(service: str, mcp_dir: Path, repo_path: Path, readme: Path) -> bool:
     try:
         with open(readme) as f:
             content = f.read()
@@ -541,18 +590,7 @@ def register_in_readme(service: str, mcp_dir: Path, repo_path: Path) -> bool:
         console.print(f"[red]Failed to write README: {e}[/red]")
         return False
 
-    # Commit in root repo — always on main, never on a feature branch
     with console.status("[bold]Committing to masterlist on main...[/bold]"):
-        subprocess.run(
-            ["git", "checkout", "main"],
-            cwd=str(repo_path),
-            capture_output=True
-        )
-        subprocess.run(
-            ["git", "pull", "--ff-only", "origin", "main"],
-            cwd=str(repo_path),
-            capture_output=True
-        )
         subprocess.run(
             ["git", "add", "README.md"],
             cwd=str(repo_path),
@@ -567,11 +605,16 @@ def register_in_readme(service: str, mcp_dir: Path, repo_path: Path) -> bool:
         if result.returncode != 0:
             console.print(f"[yellow]Commit skipped (no changes or error): {result.stderr}[/yellow]")
         else:
-            subprocess.run(
+            result = subprocess.run(
                 ["git", "push", "origin", "main"],
                 cwd=str(repo_path),
-                capture_output=True
+                capture_output=True,
+                text=True
             )
+            if result.returncode != 0:
+                console.print(f"[yellow]push main failed: {result.stderr}[/yellow]")
+            else:
+                console.print(f"[green]✓ Pushed masterlist commit to main[/green]")
 
     console.print(f"[green]✓ Registered {service}-mcp in README[/green]")
     return True

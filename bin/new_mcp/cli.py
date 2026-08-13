@@ -291,7 +291,7 @@ def main():
             choice = Prompt.ask(
                 "[bold]Open repo?[/bold]",
                 choices=["browser", "gitkraken", "both", "no"],
-                default="browser"
+                default="gitkraken"
             )
             if choice == "both":
                 open_repo(gh_url, mcp_dir, "browser")
@@ -305,7 +305,7 @@ def main():
             choice = Prompt.ask(
                 "[bold]Open all in?[/bold]",
                 choices=["browser", "gitkraken", "both", "no"],
-                default="no"
+                default="gitkraken"
             )
             if choice == "both":
                 for service, repo in completed:

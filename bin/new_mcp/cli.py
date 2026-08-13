@@ -26,7 +26,32 @@ from .steps import (
 )
 
 
-REPO_ROOT = Path(__file__).parent.parent.parent
+def _find_repo_root() -> Path:
+    """Resolve the arr-mcps checkout, whether run from source or as a uv tool.
+
+    When run from the source checkout, __file__ is <repo>/bin/new_mcp/cli.py so
+    parent.parent.parent is the repo. When installed via `uv tool install`,
+    __file__ lives under ~/.local/share/uv/tools/new-mcp/... which is useless,
+    so fall back to an env override, then the default checkout location.
+    """
+    env = os.environ.get("ARR_MCPS_REPO")
+    if env:
+        return Path(env).expanduser().resolve()
+
+    from_source = Path(__file__).resolve().parent.parent.parent
+    if (from_source / "bin" / "new_mcp").exists():
+        return from_source
+
+    default = Path.home() / "Git" / "arr-mcps"
+    if default.exists():
+        return default
+
+    raise RuntimeError(
+        "Could not locate the arr-mcps checkout. Set ARR_MCPS_REPO to its path."
+    )
+
+
+REPO_ROOT = _find_repo_root()
 LOG_DIR = Path.home() / ".local" / "share" / "mcpsmith" / "logs"
 
 

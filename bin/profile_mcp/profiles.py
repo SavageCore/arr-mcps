@@ -155,7 +155,7 @@ MODEL_SETS: dict[str, dict[str, str]] = {
         "desc": "Zen free tier — no spend",
         "plan": "opencode/glm-5-free",
         "build": "opencode/deepseek-v4-flash-free",
-        "heavy": "opencode/minimax-m3-free",
+        "heavy": "opencode/nemotron-3-ultra-free",
     },
     "go": {
         "desc": "opencode Go subscription",

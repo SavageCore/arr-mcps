@@ -158,7 +158,7 @@ MODEL_SETS: dict[str, dict[str, str]] = {
     },
     # Cheap free set: flash for both plan and build, no heavy agent.
     "free-cheap": {
-        "desc": "Zen free tier — flash plan & build, no heavy",
+        "desc": "Zen free tier — flash plan & build",
         "plan": "opencode/deepseek-v4-flash-free",
         "build": "opencode/deepseek-v4-flash-free",
     },
@@ -173,7 +173,7 @@ MODEL_SETS: dict[str, dict[str, str]] = {
     # the session (see build_config in cli.py) instead of pinning an expensive
     # model to it.
     "go-cheap": {
-        "desc": "opencode Go subscription — flash plan & build, no heavy",
+        "desc": "opencode Go subscription — flash plan & build",
         "plan": "opencode-go/deepseek-v4-flash",
         "build": "opencode-go/deepseek-v4-flash",
     },

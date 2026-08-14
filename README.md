@@ -129,6 +129,18 @@ uv tool install qbittorrent_mcp-*.whl
 claude mcp add qbittorrent --env QBITTORRENT_URL=... --env QBITTORRENT_API_KEY=... -- qbittorrent-mcp
 ```
 
+### [qbit_manage-mcp](https://github.com/SavageCore/qbit_manage-mcp)
+[![Latest release](https://img.shields.io/github/v/release/SavageCore/qbit_manage-mcp)](https://github.com/SavageCore/qbit_manage-mcp/releases/latest)
+
+MCP server for [qbit_manage](https://github.com/StuffAnThings/qbit_manage) —
+run maintenance commands against your qBittorrent torrents, manage config
+files, the scheduler, logs, security settings, and system state.
+
+```bash
+uv tool install qbit_manage_mcp-*.whl
+claude mcp add qbit-manage --env QBIT_MANAGE_URL=... --env QBIT_MANAGE_API_KEY=... -- qbit-manage-mcp
+```
+
 ### [qui-mcp](https://github.com/SavageCore/qui-mcp)
 [![Latest release](https://img.shields.io/github/v/release/SavageCore/qui-mcp)](https://github.com/SavageCore/qui-mcp/releases/latest)
 

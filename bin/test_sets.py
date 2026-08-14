@@ -43,9 +43,9 @@ assert set(cheap["agent"]) == set(REQUIRED_ROLES + ("heavy",))
 config = build_config({"a": {}, "b": {}}, [], "go")
 assert all(v["enabled"] is False for v in config["mcp"].values())
 
-# per-host model sets: proxmox has no paid account -> free only
+# per-host model sets: proxmox has no paid account -> free tiers only
 proxmox_sets = model_sets_for_host("proxmox")
-assert set(proxmox_sets) == {"free"}, proxmox_sets
+assert set(proxmox_sets) == {"free", "free-cheap"}, proxmox_sets
 assert set(model_sets_for_host("desktop")) == set(MODEL_SETS)
 assert set(model_sets_for_host("unknown-host")) == set(MODEL_SETS)
 

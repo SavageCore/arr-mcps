@@ -156,6 +156,12 @@ MODEL_SETS: dict[str, dict[str, str]] = {
         "plan": "opencode/nemotron-3-ultra-free",
         "build": "opencode/deepseek-v4-flash-free",
     },
+    # Cheap free set: flash for both plan and build, no heavy agent.
+    "free-cheap": {
+        "desc": "Zen free tier — flash plan & build, no heavy",
+        "plan": "opencode/deepseek-v4-flash-free",
+        "build": "opencode/deepseek-v4-flash-free",
+    },
     "go": {
         "desc": "opencode Go subscription",
         "plan": "opencode-go/glm-5.2",
@@ -183,8 +189,8 @@ MODEL_SETS: dict[str, dict[str, str]] = {
 # it only offers the free tier; the desktop host can use every set. Hosts not
 # listed fall back to all sets.
 HOST_MODEL_SETS: dict[str, tuple[str, ...]] = {
-    "desktop": ("free", "go", "go-cheap", "deepseek"),
-    "proxmox": ("free",),
+    "desktop": ("free", "free-cheap", "go", "go-cheap", "deepseek"),
+    "proxmox": ("free", "free-cheap"),
 }
 
 

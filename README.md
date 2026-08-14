@@ -44,6 +44,19 @@ uv tool install komga_mcp-*.whl
 claude mcp add komga --env KOMGA_URL=... --env KOMGA_API_KEY=... -- komga-mcp
 ```
 
+### [lidarr-mcp](https://github.com/SavageCore/lidarr-mcp)
+[![Latest release](https://img.shields.io/github/v/release/SavageCore/lidarr-mcp)](https://github.com/SavageCore/lidarr-mcp/releases/latest)
+
+MCP server for [Lidarr](https://lidarr.audio) — read and manage your music
+library: artists, albums, tracks, files, queue, wanted/missing, history,
+indexers, import lists, metadata profiles, custom formats, tags, and more (v1
+REST API surface).
+
+```bash
+uv tool install lidarr_mcp-*.whl
+claude mcp add lidarr --env LIDARR_URL=... --env LIDARR_API_KEY=... -- lidarr-mcp
+```
+
 ### [mylar3-mcp](https://github.com/SavageCore/mylar3-mcp)
 [![Latest release](https://img.shields.io/github/v/release/SavageCore/mylar3-mcp)](https://github.com/SavageCore/mylar3-mcp/releases/latest)
 
@@ -118,6 +131,18 @@ claude mcp add seerr --env SEERR_URL=... --env SEERR_API_KEY=... -- seerr-mcp
 ```
 
 ## Download clients
+
+### [autobrr-mcp](https://github.com/SavageCore/autobrr-mcp)
+[![Latest release](https://img.shields.io/github/v/release/SavageCore/autobrr-mcp)](https://github.com/SavageCore/autobrr-mcp/releases/latest)
+
+MCP server for [autobrr](https://autobrr.com) — manage filters, indexers,
+IRC networks, RSS/Torznab feeds, download clients, actions, release queue,
+import lists, notifications, API keys, proxies, and system config.
+
+```bash
+uv tool install autobrr_mcp-*.whl
+claude mcp add autobrr --env AUTOBRR_URL=... --env AUTOBRR_API_KEY=... -- autobrr-mcp
+```
 
 ### [qbittorrent-mcp](https://github.com/SavageCore/qbittorrent-mcp)
 [![Latest release](https://img.shields.io/github/v/release/SavageCore/qbittorrent-mcp)](https://github.com/SavageCore/qbittorrent-mcp/releases/latest)

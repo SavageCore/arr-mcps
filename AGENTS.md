@@ -95,6 +95,21 @@ new-mcp https://github.com/Sonarr/Sonarr
 It automates scaffolding, build, release, README registration, and local+remote install.
 See [`README.md#adding-a-new-mcp`](README.md#adding-a-new-mcp) for details.
 
+## Wizard tooling deployment (`bin/`)
+`bin/` is a single `uv` tool project (`new-mcp`, v0.0.0) whose wheel ships both
+`new-mcp` and `profile-mcp` scripts, so one install refreshes both:
+```bash
+cd /home/savagecore/Git/arr-mcps/bin && uv tool install --force .
+```
+The **Proxmox host (`192.168.50.3`) only gets `profile-mcp`** — `new-mcp` is a
+desktop-only scaffolding wizard and must not be installed there. The host's
+`/root/bin` is a plain copy of `bin/` (not a git checkout); sync it, install,
+then drop the `new-mcp` binary so the host ends up with only `profile-mcp`:
+```bash
+rsync -az --exclude __pycache__ /home/savagecore/Git/arr-mcps/bin/ root@192.168.50.3:/root/bin/
+ssh root@192.168.50.3 -- 'chown -R smbuser:mcp-agent /root/bin && cd /root/bin && uv tool install --force . && rm -f /root/.local/bin/new-mcp'
+```
+
 ## Per-server AGENTS.md
 Each server repo has its own `AGENTS.md` with specifics (tests, live integration
 env vars, design notes). Read it before working in that server.

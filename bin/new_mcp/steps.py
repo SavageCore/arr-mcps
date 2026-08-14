@@ -60,7 +60,18 @@ def normalize_instance_url(url: str) -> str:
     return "http://" + url
 
 
-def resolve_instance_url(service: str) -> str:
+def _util_model(model_set: str) -> str:
+    """Resolve the model for wizard helper opencode calls.
+
+    These trivial Q&A calls must not fall back to opencode's default model
+    (which may be a paid provider with no usage left), so they always pin an
+    explicit --model. Defaults to the deepseek-cheap build model (DeepSeek
+    direct API flash) so they work even when no provider was selected.
+    """
+    return MODEL_SETS.get(model_set, MODEL_SETS["deepseek-cheap"])["build"]
+
+
+def resolve_instance_url(service: str, model_set: str = "deepseek-cheap") -> str:
     """Query opencode agent to resolve duckdns URL to IP:port via nginx proxy manager.
 
     Uses the opencode agent in ~/Documents/christopfarr/ to query NPM for the
@@ -78,7 +89,7 @@ def resolve_instance_url(service: str) -> str:
     try:
         result = subprocess.run(
             ["opencode", "run", "--dir", str(Path.home() / "Documents/christopfarr"),
-             prompt],
+             "--agent", "build", "--model", _util_model(model_set), prompt],
             capture_output=True,
             text=True,
             timeout=120
@@ -311,7 +322,7 @@ def release_to_github(service: str, repo: str, mcp_dir: Path) -> bool:
     return True
 
 
-def register_in_readme(service: str, mcp_dir: Path, repo_path: Path) -> bool:
+def register_in_readme(service: str, mcp_dir: Path, repo_path: Path, model_set: str = "deepseek-cheap") -> bool:
     """Register the new MCP in README.md, committing to main only."""
     console.print()
     console.print(f"[bold cyan]Step 6: Register in README.md[/bold cyan]")
@@ -351,7 +362,7 @@ def register_in_readme(service: str, mcp_dir: Path, repo_path: Path) -> bool:
             )
 
     try:
-        return _register_in_readme_on_main(service, mcp_dir, repo_path, readme)
+        return _register_in_readme_on_main(service, mcp_dir, repo_path, readme, model_set)
     finally:
         if switched:
             subprocess.run(
@@ -367,7 +378,7 @@ def register_in_readme(service: str, mcp_dir: Path, repo_path: Path) -> bool:
                 )
 
 
-def _register_in_readme_on_main(service: str, mcp_dir: Path, repo_path: Path, readme: Path) -> bool:
+def _register_in_readme_on_main(service: str, mcp_dir: Path, repo_path: Path, readme: Path, model_set: str = "deepseek-cheap") -> bool:
     try:
         with open(readme) as f:
             content = f.read()
@@ -394,7 +405,8 @@ def _register_in_readme_on_main(service: str, mcp_dir: Path, repo_path: Path, re
 
     try:
         result = subprocess.run(
-            ["opencode", "run", "--dir", str(mcp_dir), prompt],
+            ["opencode", "run", "--dir", str(mcp_dir), "--agent", "build",
+             "--model", _util_model(model_set), prompt],
             capture_output=True,
             text=True,
             timeout=120
@@ -443,7 +455,8 @@ def _register_in_readme_on_main(service: str, mcp_dir: Path, repo_path: Path, re
 
     try:
         result = subprocess.run(
-            ["opencode", "run", "--dir", str(mcp_dir), prompt],
+            ["opencode", "run", "--dir", str(mcp_dir), "--agent", "build",
+             "--model", _util_model(model_set), prompt],
             capture_output=True,
             text=True,
             timeout=120

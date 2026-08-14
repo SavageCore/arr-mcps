@@ -249,7 +249,7 @@ def main():
             continue
 
         # README
-        if not register_in_readme(service, mcp_dir, REPO_ROOT):
+        if not register_in_readme(service, mcp_dir, REPO_ROOT, model_set=model_set):
             console.print("[yellow]WARNING: README registration had issues, but continuing...[/yellow]")
             console.print()
 
@@ -258,7 +258,7 @@ def main():
         if not instance_url and auth_token:
             console.print()
             console.print("[dim]Resolving instance URL via nginx proxy manager...[/dim]")
-            instance_url = resolve_instance_url(service)
+            instance_url = resolve_instance_url(service, model_set=model_set)
             if instance_url:
                 console.print(f"[green]✓ Resolved to {instance_url}[/green]")
                 # Allow override for custom instances (e.g., Tailscale)

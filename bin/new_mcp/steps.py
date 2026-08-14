@@ -15,6 +15,7 @@ from rich.prompt import Confirm, Prompt
 
 from profile_mcp.profiles import MODEL_SETS
 
+from new_mcp import GITHUB_OWNER
 from .templates import PLAN_PROMPT, README_ENTRY
 
 
@@ -228,14 +229,14 @@ def release_to_github(service: str, repo: str, mcp_dir: Path) -> bool:
     console.print(f"[bold cyan]Step 5: Release to GitHub[/bold cyan]")
     console.print()
 
-    gh_repo = f"SavageCore/{service}-mcp"
+    gh_repo = f"{GITHUB_OWNER}/{service}-mcp"
 
     with console.status("[bold]Creating GitHub repo and releasing...[/bold]"):
         # Create repo (idempotent via || true)
         subprocess.run(
             ["gh", "repo", "create", gh_repo, "--public",
              "--description", f"Model Context Protocol for {repo}",
-             "--homepage", "https://github.com/SavageCore/arr-mcps"],
+             "--homepage", f"https://github.com/{GITHUB_OWNER}/arr-mcps"],
             cwd=str(mcp_dir),
             capture_output=True
         )
@@ -502,7 +503,8 @@ def _register_in_readme_on_main(service: str, mcp_dir: Path, repo_path: Path, re
     entry = README_ENTRY.format(
         service=service,
         service_upper=service_upper,
-        description=description
+        description=description,
+        owner=GITHUB_OWNER
     )
 
     # Find insertion point: end of the chosen ## category
@@ -765,7 +767,7 @@ def install_remotely(service: str, repo: str, instance_url: str = "", auth_token
         console.print(f"[yellow]SSH key not found at {key_path}, skipping remote deploy[/yellow]")
         return False
 
-    gh_repo = f"SavageCore/{service}-mcp"
+    gh_repo = f"{GITHUB_OWNER}/{service}-mcp"
     remote_dir = f"/root/{service}-mcp"
 
     with console.status(f"[bold]Deploying to {host}:{remote_dir}...[/bold]"):

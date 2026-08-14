@@ -15,7 +15,7 @@ from rich.text import Text
 from profile_mcp.cli import pick_set
 from profile_mcp.profiles import PAID_MODEL_SETS, paid_model_sets
 
-from new_mcp import __version__
+from new_mcp import GITHUB_OWNER, __version__
 from .steps import (
     parse_github_url,
     scaffold_dir,
@@ -149,7 +149,7 @@ def main():
 
     if args.version:
         console.print(f"MCPsmith v{__version__}")
-        console.print("https://github.com/SavageCore/arr-mcps/tree/main/bin")
+        console.print(f"https://github.com/{GITHUB_OWNER}/arr-mcps/tree/main/bin")
         return 0
 
     # Set up logging
@@ -310,7 +310,7 @@ def main():
         console.print()
         if len(completed) == 1:
             service, repo = completed[0]
-            gh_url = f"https://github.com/SavageCore/{service}-mcp"
+            gh_url = f"https://github.com/{GITHUB_OWNER}/{service}-mcp"
             mcp_dir = REPO_ROOT / f"{service}-mcp"
             console.print(f"[dim]{gh_url}[/dim]")
             choice = Prompt.ask(
@@ -326,7 +326,7 @@ def main():
         else:
             console.print("[bold]Completed repos:[/bold]")
             for service, repo in completed:
-                console.print(f"  • https://github.com/SavageCore/{service}-mcp")
+                console.print(f"  • https://github.com/{GITHUB_OWNER}/{service}-mcp")
             choice = Prompt.ask(
                 "[bold]Open all in?[/bold]",
                 choices=["browser", "gitkraken", "both", "no"],
@@ -334,13 +334,13 @@ def main():
             )
             if choice == "both":
                 for service, repo in completed:
-                    gh_url = f"https://github.com/SavageCore/{service}-mcp"
+                    gh_url = f"https://github.com/{GITHUB_OWNER}/{service}-mcp"
                     mcp_dir = REPO_ROOT / f"{service}-mcp"
                     open_repo(gh_url, mcp_dir, "browser")
                     open_repo(gh_url, mcp_dir, "gitkraken")
             elif choice != "no":
                 for service, repo in completed:
-                    gh_url = f"https://github.com/SavageCore/{service}-mcp"
+                    gh_url = f"https://github.com/{GITHUB_OWNER}/{service}-mcp"
                     mcp_dir = REPO_ROOT / f"{service}-mcp"
                     open_repo(gh_url, mcp_dir, choice)
 

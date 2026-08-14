@@ -144,6 +144,19 @@ uv tool install autobrr_mcp-*.whl
 claude mcp add autobrr --env AUTOBRR_URL=... --env AUTOBRR_API_KEY=... -- autobrr-mcp
 ```
 
+### [delugearr-mcp](https://github.com/arr-mcps/delugearr-mcp)
+[![Latest release](https://img.shields.io/github/v/release/arr-mcps/delugearr-mcp)](https://github.com/arr-mcps/delugearr-mcp/releases/latest)
+
+MCP server for [Delugearr](https://github.com/SavageCore/delugearr) — detect
+and clean up unregistered torrents on a seedbox's Deluge: status, scan runs,
+detections, history, the exempt list, per-torrent removal/exemption, and
+settings.
+
+```bash
+uv tool install delugearr_mcp-*.whl
+claude mcp add delugearr --env DELUGEARR_URL=... --env DELUGEARR_API_KEY=... -- delugearr-mcp
+```
+
 ### [qbittorrent-mcp](https://github.com/arr-mcps/qbittorrent-mcp)
 [![Latest release](https://img.shields.io/github/v/release/arr-mcps/qbittorrent-mcp)](https://github.com/arr-mcps/qbittorrent-mcp/releases/latest)
 

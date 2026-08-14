@@ -7,10 +7,12 @@ from pathlib import Path
 from profile_mcp.cli import build_config
 from profile_mcp.profiles import (
     MODEL_SETS,
+    PAID_MODEL_SETS,
     Profile,
     PROFILES,
     load_custom_profiles,
     model_sets_for_host,
+    paid_model_sets,
     profile_keys,
     save_custom_profile,
 )
@@ -25,6 +27,23 @@ for name, s in MODEL_SETS.items():
     if "heavy" in s:
         provider, _, model = s["heavy"].partition("/")
         assert provider and model, f"{name}.heavy = {s['heavy']!r} is not 'provider/model'"
+
+# deepseek-cheap: flash for both plan and build, no heavy agent
+assert "deepseek-cheap" in MODEL_SETS, "deepseek-cheap missing from MODEL_SETS"
+dsc = MODEL_SETS["deepseek-cheap"]
+assert dsc["plan"] == "deepseek/deepseek-v4-flash"
+assert dsc["build"] == "deepseek/deepseek-v4-flash"
+assert "heavy" not in dsc
+dsc_config = build_config({}, [], "deepseek-cheap")
+assert dsc_config["agent"]["plan"]["model"] == "deepseek/deepseek-v4-flash"
+assert dsc_config["agent"]["build"]["model"] == "deepseek/deepseek-v4-flash"
+assert dsc_config["agent"]["heavy"] == {"disable": True}
+
+# paid sets are exactly the ones new-mcp offers for plan/build
+assert PAID_MODEL_SETS == ("go", "go-cheap", "deepseek", "deepseek-cheap")
+assert set(paid_model_sets()) == set(PAID_MODEL_SETS)
+for name in PAID_MODEL_SETS:
+    assert "plan" in MODEL_SETS[name] and "build" in MODEL_SETS[name]
 
 config = build_config({}, [], "go")
 assert config["agent"]["plan"]["model"] == "opencode-go/glm-5.2"

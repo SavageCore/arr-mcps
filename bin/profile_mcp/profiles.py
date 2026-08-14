@@ -183,18 +183,34 @@ MODEL_SETS: dict[str, dict[str, str]] = {
         "build": "deepseek/deepseek-v4-flash",
         "heavy": "deepseek/deepseek-v4-pro",
     },
+    # Cheap DeepSeek set: flash for both plan and build, no heavy agent.
+    "deepseek-cheap": {
+        "desc": "DeepSeek direct API — flash plan & build",
+        "plan": "deepseek/deepseek-v4-flash",
+        "build": "deepseek/deepseek-v4-flash",
+    },
 }
 
 # Which model sets each host may use. The Proxmox box has no paid account, so
 # it only offers the free tier; the desktop host can use every set. Hosts not
 # listed fall back to all sets.
 HOST_MODEL_SETS: dict[str, tuple[str, ...]] = {
-    "desktop": ("free", "free-cheap", "go", "go-cheap", "deepseek"),
+    "desktop": ("free", "free-cheap", "go", "go-cheap", "deepseek", "deepseek-cheap"),
     "proxmox": ("free", "free-cheap"),
 }
+
+# Paid model sets: the ones backed by a paid account (opencode-go subscription
+# or DeepSeek direct API), used where the free Zen tier is not appropriate —
+# e.g. the new-mcp wizard's plan/build stages.
+PAID_MODEL_SETS: tuple[str, ...] = ("go", "go-cheap", "deepseek", "deepseek-cheap")
 
 
 def model_sets_for_host(host: str) -> dict[str, dict[str, str]]:
     """Return the model sets offered on the given host."""
     names = HOST_MODEL_SETS.get(host, tuple(MODEL_SETS))
     return {name: MODEL_SETS[name] for name in names if name in MODEL_SETS}
+
+
+def paid_model_sets() -> dict[str, dict[str, str]]:
+    """Return the paid model sets (opencode-go subscription / DeepSeek direct)."""
+    return {name: MODEL_SETS[name] for name in PAID_MODEL_SETS if name in MODEL_SETS}

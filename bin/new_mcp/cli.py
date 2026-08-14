@@ -12,6 +12,9 @@ from rich.panel import Panel
 from rich.prompt import Confirm, Prompt
 from rich.text import Text
 
+from profile_mcp.cli import pick_set
+from profile_mcp.profiles import PAID_MODEL_SETS, paid_model_sets
+
 from new_mcp import __version__
 from .steps import (
     parse_github_url,
@@ -124,8 +127,8 @@ def main():
     parser.add_argument("urls", nargs="*", help="GitHub repo URLs")
     parser.add_argument("--skip-remote", action="store_true", help="Skip remote deploy")
     parser.add_argument("--auto-approve", action="store_true", help="Auto-approve plan and build")
-    parser.add_argument("--provider", choices=["go", "deepseek"], default=None,
-                        help="Provider for plan/build agents (go=opencode-go, deepseek=direct API). Skips the prompt.")
+    parser.add_argument("--provider", choices=list(PAID_MODEL_SETS), default=None,
+                        help="Model set for plan/build stages (go, go-cheap, deepseek, deepseek-cheap). Skips the prompt.")
     parser.add_argument("--url", default=None,
                         help="Override the instance URL used for opencode registration (skips NPM resolution).")
     parser.add_argument("-v", "--version", action="store_true", help="Show version")
@@ -139,7 +142,7 @@ def main():
         console.print("  new-mcp                                 Interactive mode")
         console.print("  new-mcp --skip-remote <url>             Skip remote deploy")
         console.print("  new-mcp --auto-approve                  Batch mode (auto-approve plans)")
-        console.print("  new-mcp --provider go|deepseek          Provider for plan/build agents (skips prompt)")
+        console.print("  new-mcp --provider go                   Model set for plan/build (skips prompt; choices: go, go-cheap, deepseek, deepseek-cheap)")
         console.print("  new-mcp --url <instance-url>            Override registration URL (skips NPM resolution)")
         console.print("  new-mcp --version                       Show version")
         return 0
@@ -177,17 +180,10 @@ def main():
     console.print(f"[bold cyan]Processing {len(urls)} repo(s)[/bold cyan]")
     console.print()
 
-    # Provider for the opencode plan/build agents (asked once, or via --provider)
-    provider = args.provider
-    if not provider:
-        console.print("[bold]Which provider should plan/build use?[/bold]")
-        console.print("[dim]go = OpenCode Go subscription (default) · deepseek = DeepSeek direct (pay-per-token)[/dim]")
-        provider_choice = Prompt.ask(
-            "Provider",
-            choices=["opencode-go (subscription)", "DeepSeek direct (pay-per-token)"],
-            default="opencode-go (subscription)",
-        )
-        provider = "go" if provider_choice.startswith("opencode-go") else "deepseek"
+    # Model set for the opencode plan/build stages (asked once, or via --provider)
+    model_set = args.provider
+    if not model_set:
+        model_set = pick_set(paid_model_sets(), title="Which provider should plan/build use?")
         console.print()
 
     # Collect API credentials upfront (instance URLs are auto-resolved per service)
@@ -207,6 +203,10 @@ def main():
             "[bold]Auto-approve plan and proceed to build? (batch mode, no notifications)[/bold]",
             default=False
         )
+
+    # Interactive plan/build (model can ask questions) only when a human is
+    # attached and we're not in batch auto-approve mode.
+    interactive = not auto_approve and sys.stdin.isatty()
 
     console.print()
 
@@ -237,7 +237,7 @@ def main():
             console.print()
 
         # Plan & build
-        if not plan_and_build(service, repo, mcp_dir, auto_approve=auto_approve, provider=provider):
+        if not plan_and_build(service, repo, mcp_dir, auto_approve=auto_approve, model_set=model_set, interactive=interactive):
             failed.append((url, "plan/build cancelled or failed"))
             console.print()
             continue

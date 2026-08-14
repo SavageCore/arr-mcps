@@ -106,7 +106,7 @@ def print_header():
     console.print()
 
 
-def pick_set(sets: dict[str, dict[str, str]]) -> str:
+def pick_set(sets: dict[str, dict[str, str]], title: str = "Choose a model set") -> str:
     """Interactive model-set picker: ↑/↓ move · enter select · 1-9 jump · q quit.
 
     Returns the chosen model set name from `sets`. Quitting raises SystemExit
@@ -118,7 +118,7 @@ def pick_set(sets: dict[str, dict[str, str]]) -> str:
     cursor = 0
     console.clear()
     while True:
-        console.print("[bold cyan]Choose a model set[/bold cyan]  [dim](↑/↓ move · number selects · enter for highlighted · q quit)[/dim]")
+        console.print(f"[bold cyan]{title}[/bold cyan]  [dim](↑/↓ move · number selects · enter for highlighted · q quit)[/dim]")
         console.print()
 
         for i, name in enumerate(names):

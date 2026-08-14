@@ -98,7 +98,7 @@ env vars, design notes). Read it before working in that server.
 
 ## External MCP deployments
 
-`SavageCore/qbittorrent-mcp` is deployed alongside the arr-stack servers:
+`arr-mcps/qbittorrent-mcp` is deployed alongside the arr-stack servers:
 
 - **Env vars** (set in `opencode.json`/`opencode.jsonc`): `QBITTORRENT_URL`,
   `QBITTORRENT_API_KEY`, plus `QBITTORRENT_USERNAME`/`QBITTORRENT_PASSWORD` as a
